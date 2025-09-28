@@ -318,7 +318,7 @@ namespace CSV2CFX
 
                 if (!string.IsNullOrWhiteSpace(currentMachineInfo.UniqueId))
                 {
-                    await _machineService.CreateRabbitmqAsync(uniqueId: currentMachineInfo.UniqueId).ConfigureAwait(false);
+                    // await _machineService.CreateRabbitmqAsync(uniqueId: currentMachineInfo.UniqueId).ConfigureAwait(false);
                 }
 
                 while (!_cancellationTokenSource!.Token.IsCancellationRequested)

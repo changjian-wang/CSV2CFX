@@ -68,6 +68,7 @@ namespace CSV2CFX
                     services.Configure<CsvFilePathSetting>(context.Configuration.GetSection("CsvFilePath"));
                     services.Configure<RabbitMQPublisherSettings>(context.Configuration.GetSection("RabbitMQPublisherSettings"));
                     services.Configure<ApiSetting>(context.Configuration.GetSection("Api"));
+                    services.Configure<MessageBrokerSetting>(context.Configuration.GetSection("MessageBroker"));
                     // 注册 ViewModel，注入 IConfiguration
                     services.AddTransient<ConfigurationViewModel>(provider =>
                     {
@@ -125,6 +126,12 @@ namespace CSV2CFX
 
                     // 注册 RabbitMQ 服务
                     services.AddSingleton<IRabbitMQService, RabbitMQService>();
+
+                    // 注册 MQTT 服务
+                    services.AddTransient<MqttService>();
+
+                    // 注册统一的消息服务
+                    services.AddSingleton<IMessageService, MessageService>();
 
                     // 注册其他服务
                     services.AddSingleton<IMachineService, MachineService>();

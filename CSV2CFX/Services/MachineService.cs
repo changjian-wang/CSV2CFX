@@ -19,7 +19,7 @@ namespace CSV2CFX.Services
         private readonly IOptionsMonitor<MachineMetadataSetting> _machineMetadataOptions;
         private readonly IOptionsMonitor<CsvFilePathSetting> _csvFilePathOptions;
         private readonly IOptionsMonitor<RabbitMQPublisherSettings> _rabbitMQPublisherOptions;
-        private readonly IRabbitMQService _rabbitMQService;
+        private readonly MessageService _messageService;
         private readonly List<IDisposable> _optionsChangeTokens = new();
 
         private const string QUEUE_SUFFIX = "queue";
@@ -38,14 +38,14 @@ namespace CSV2CFX.Services
             IOptionsMonitor<MachineMetadataSetting> machineMetadataOptions,
             IOptionsMonitor<CsvFilePathSetting> csvFilePathOptions,
             IOptionsMonitor<RabbitMQPublisherSettings> rabbitMQPublisherOptions,
-            IRabbitMQService rabbitMQService)
+            MessageService messageService)
         {
             _logger = logger;
             _machineInfoOptions = machineInfoOptions;
             _machineMetadataOptions = machineMetadataOptions;
             _csvFilePathOptions = csvFilePathOptions;
             _rabbitMQPublisherOptions = rabbitMQPublisherOptions;
-            _rabbitMQService = rabbitMQService;
+            _messageService = messageService;
 
             // 设置配置更改监听
             SetupConfigurationChangeHandlers();
@@ -76,54 +76,25 @@ namespace CSV2CFX.Services
 
         private void OnMachineInfoChanged(MachineInfoSetting newValue)
         {
-            _logger.LogInformation($"机器信息配置已更新: UniqueId={newValue.UniqueId}, Version={newValue.Version}, HeartbeatFrequency={newValue.HeartbeatFrequency}");
+            _logger.LogInformation("机器信息配置已更新: UniqueId={UniqueId}, Version={Version}, HeartbeatFrequency={HeartbeatFrequency}",
+                newValue.UniqueId, newValue.Version, newValue.HeartbeatFrequency);
         }
 
         private void OnMachineMetadataChanged(MachineMetadataSetting newValue)
         {
-            _logger.LogInformation($"机器元数据配置已更新: MachineName={newValue.MachineName}, StationName={newValue.StationName}");
+            _logger.LogInformation("机器元数据配置已更新: MachineName={MachineName}, StationName={StationName}",
+                newValue.MachineName, newValue.StationName);
         }
 
         private void OnCsvFilePathChanged(CsvFilePathSetting newValue)
         {
-            _logger.LogInformation($"CSV文件路径配置已更新: ProductionPath={newValue.ProductionInformationFilePath}, ProcessDataPath={newValue.ProcessDataFilesFilePath}");
+            _logger.LogInformation("CSV文件路径配置已更新: ProductionPath={ProductionPath}, ProcessDataPath={ProcessDataPath}",
+                newValue.ProductionInformationFilePath, newValue.ProcessDataFilesFilePath);
         }
 
         private void OnRabbitMQPublisherChanged(RabbitMQPublisherSettings newValue)
         {
-            _logger.LogInformation($"RabbitMQ发布者配置已更新: Prefix={newValue.Prefix}");
-        }
-
-        /// <summary>
-        /// Create RabbitMQ queues, exchanges, and bindings for CFX messages.
-        /// </summary>
-        /// <returns></returns>
-        public async Task CreateRabbitmqAsync(string uniqueId)
-        {
-            var rabbitMQPublisherSettings = _rabbitMQPublisherOptions.CurrentValue;
-
-            var keyValues = new Dictionary<string, string>
-            {
-                ["heartbeat"] = $"{rabbitMQPublisherSettings.Prefix}.heartbeat",
-                ["workstarted"] = $"{rabbitMQPublisherSettings.Prefix}.workstarted",
-                ["workcompleted"] = $"{rabbitMQPublisherSettings.Prefix}.workcompleted",
-                ["unitsprocessed"] = $"{rabbitMQPublisherSettings.Prefix}.unitsprocessed",
-                ["stationstatechanged"] = $"{rabbitMQPublisherSettings.Prefix}.stationstatechanged",
-                ["faultoccurred"] = $"{rabbitMQPublisherSettings.Prefix}.faultoccurred",
-                ["faultcleared"] = $"{rabbitMQPublisherSettings.Prefix}.faultcleared",
-            };
-
-            var exchangeName = $"{rabbitMQPublisherSettings.Prefix}.{EXCHANGE_SUFFIX}";
-            await _rabbitMQService.CreateExchangeAsync(exchangeName);
-
-            foreach (var item in keyValues)
-            {
-                var queueName = $"{item.Value}.{QUEUE_SUFFIX}".ToLower();
-                var routingKey = $"{item.Value}.{ROUTINGKEY_SUFFIX}".ToLower();
-
-                await _rabbitMQService.CreateQueueAsync(queueName);
-                await _rabbitMQService.BindQueueAsync(queueName, exchangeName, routingKey);
-            }
+            _logger.LogInformation("RabbitMQ发布者配置已更新: Prefix={Prefix}", newValue.Prefix);
         }
 
         /// <summary>
@@ -175,12 +146,10 @@ namespace CSV2CFX.Services
                 MessageBody = body
             };
 
-            var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-            var routingKey = $"{rabbitMQPublisher.Prefix}.heartbeat.{ROUTINGKEY_SUFFIX}";
-            var queueName = $"{rabbitMQPublisher.Prefix}.heartbeat.{QUEUE_SUFFIX}";
+            var topic = $"{rabbitMQPublisher.Prefix}.heartbeat";
             var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
-            await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
+            await _messageService.PublishMessageAsync(topic, message);
 
             // 使用当前配置的心跳频率进行延迟
             var heartbeatFrequency = machineInfo.HeartbeatFrequency;
@@ -206,7 +175,7 @@ namespace CSV2CFX.Services
 
             if (!File.Exists(filePath) && !File.Exists(copyFilePath))
             {
-                _logger.LogDebug($"生产信息文件不存在: {filePath}");
+                _logger.LogDebug("生产信息文件不存在: {FilePath}", filePath);
                 return;
             }
 
@@ -214,7 +183,7 @@ namespace CSV2CFX.Services
             {
                 File.Copy(filePath, copyFilePath, true);
                 File.Delete(filePath);
-                _logger.LogDebug($"已创建备份文件: {copyFilePath}");
+                _logger.LogDebug("已创建备份文件: {CopyFilePath}", copyFilePath);
             }
 
             filePath = copyFilePath;
@@ -223,7 +192,7 @@ namespace CSV2CFX.Services
 
             try
             {
-                _logger.LogInformation($"开始处理生产信息文件，共 {lines.Length - 1} 行数据");
+                _logger.LogInformation("开始处理生产信息文件，共 {LineCount} 行数据", lines.Length - 1);
 
                 foreach (var line in lines.Skip(1))
                 {
@@ -267,7 +236,7 @@ namespace CSV2CFX.Services
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
-                    _logger.LogDebug($"已删除备份文件: {filePath}");
+                    _logger.LogDebug("已删除备份文件: {FilePath}", filePath);
                 }
                 await Task.Delay(5000).ConfigureAwait(false);
             }
@@ -303,14 +272,11 @@ namespace CSV2CFX.Services
                 RequestID = Guid.NewGuid().ToString(),
                 MessageBody = body
             };
-
-            var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-            var routingKey = $"{rabbitMQPublisher.Prefix}.workstarted.{ROUTINGKEY_SUFFIX}";
-            var queueName = $"{rabbitMQPublisher.Prefix}.workstarted.{QUEUE_SUFFIX}";
+            var topic = $"{rabbitMQPublisher.Prefix}.workstarted";
             var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
             // workstarted
-            await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
+            await _messageService.PublishMessageAsync(topic, message);
         }
 
         // unitsprocessed
@@ -324,7 +290,7 @@ namespace CSV2CFX.Services
             var directoryPath = csvFilePaths.ProcessDataFilesFilePath ?? "";
             if (!Directory.Exists(directoryPath))
             {
-                _logger.LogWarning($"过程数据文件夹不存在: {directoryPath}");
+                _logger.LogWarning("过程数据文件夹不存在: {DirectoryPath}", directoryPath);
                 return;
             }
 
@@ -335,7 +301,7 @@ namespace CSV2CFX.Services
 
             if (!File.Exists(filePath) && !File.Exists(copyFilePath))
             {
-                _logger.LogDebug($"未找到序列号 {production.SN} 对应的过程数据文件");
+                _logger.LogDebug("未找到序列号 {SN} 对应的过程数据文件", production.SN);
                 return;
             }
 
@@ -412,17 +378,15 @@ namespace CSV2CFX.Services
                     ["MessageBody"] = body
                 };
 
-                var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-                var routingKey = $"{rabbitMQPublisher.Prefix}.unitsprocessed.{ROUTINGKEY_SUFFIX}";
-                var queueName = $"{rabbitMQPublisher.Prefix}.unitsprocessed.{QUEUE_SUFFIX}";
+                var topic = $"{rabbitMQPublisher.Prefix}.unitsprocessed";
                 var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
                 // unitsprocessed
-                await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
+                await _messageService.PublishMessageAsync(topic, message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"发布UnitsProcessed消息时发生错误，SN: {production.SN}");
+                _logger.LogError(ex, "发布UnitsProcessed消息时发生错误，SN: {SN}", production.SN);
                 return;
             }
             finally
@@ -467,13 +431,11 @@ namespace CSV2CFX.Services
                 MessageBody = body
             };
 
-            var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-            var routingKey = $"{rabbitMQPublisher.Prefix}.workcompleted.{ROUTINGKEY_SUFFIX}";
-            var queueName = $"{rabbitMQPublisher.Prefix}.workcompleted.{QUEUE_SUFFIX}";
+            var topic = $"{rabbitMQPublisher.Prefix}.workcompleted";
             var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
             // workcompleted
-            await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
+            await _messageService.PublishMessageAsync(topic, message);
         }
 
         /// <summary>
@@ -492,7 +454,7 @@ namespace CSV2CFX.Services
 
             if (!File.Exists(filePath) && !File.Exists(copyFilePath))
             {
-                _logger.LogDebug($"机器状态信息文件不存在: {filePath}");
+                _logger.LogDebug("机器状态信息文件不存在: {FilePath}", filePath);
                 return;
             }
 
@@ -582,12 +544,10 @@ namespace CSV2CFX.Services
                     }
                 };
 
-                var faultoccurred_exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-                var faultoccurred_routingKey = $"{rabbitMQPublisher.Prefix}.faultoccurred.{ROUTINGKEY_SUFFIX}";
-                var faultoccurred_queueName = $"{rabbitMQPublisher.Prefix}.faultoccurred.{QUEUE_SUFFIX}";
+                var faultoccurred_topic = $"{rabbitMQPublisher.Prefix}.faultoccurred";
                 var faultoccurred_message = JsonSerializer.Serialize(faultOccurredJson, _jsonSerializerOptions);
 
-                await _rabbitMQService.PublishMessageAsync(faultoccurred_exchangeName, faultoccurred_routingKey, faultoccurred_message);
+                await _messageService.PublishMessageAsync(faultoccurred_topic, faultoccurred_message);
 
                 // faultcleared
                 if (list.Count - 1 == lastErrorIndex)
@@ -622,12 +582,10 @@ namespace CSV2CFX.Services
                     }
                 };
 
-                var faultcleared_exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-                var faultcleared_routingKey = $"{rabbitMQPublisher.Prefix}.faultcleared.{ROUTINGKEY_SUFFIX}";
-                var faultcleared_queueName = $"{rabbitMQPublisher.Prefix}.faultcleared.{QUEUE_SUFFIX}";
+                var faultcleared_topic = $"{rabbitMQPublisher.Prefix}.faultcleared";
                 var faultcleared_message = JsonSerializer.Serialize(faultClearedJson, _jsonSerializerOptions);
 
-                await _rabbitMQService.PublishMessageAsync(faultcleared_exchangeName, faultcleared_routingKey, faultcleared_message);
+                await _messageService.PublishMessageAsync(faultcleared_topic, faultcleared_message);
 
                 // StationStateChanged
                 if (list.Count >= 2)
@@ -663,12 +621,10 @@ namespace CSV2CFX.Services
                         }
                     };
 
-                    var stationstatechanged_exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
-                    var stationstatechanged_routingKey = $"{rabbitMQPublisher.Prefix}.stationstatechanged.{ROUTINGKEY_SUFFIX}";
-                    var stationstatechanged_queueName = $"{rabbitMQPublisher.Prefix}.stationstatechanged.{QUEUE_SUFFIX}";
+                    var stationstatechanged_topic = $"{rabbitMQPublisher.Prefix}.stationstatechanged";
                     var stationstatechanged_message = JsonSerializer.Serialize(stationstatechanged_json, _jsonSerializerOptions);
 
-                    await _rabbitMQService.PublishMessageAsync(stationstatechanged_exchangeName, stationstatechanged_routingKey, stationstatechanged_message);
+                    await _messageService.PublishMessageAsync(stationstatechanged_topic, stationstatechanged_message);
                 }
 
                 _logger.LogInformation("机器状态信息处理完成");
