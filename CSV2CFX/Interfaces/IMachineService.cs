@@ -9,6 +9,8 @@ namespace CSV2CFX.Interfaces
 {
     public interface IMachineService
     {
+        Task CreateRabbitmqAsync(string uniqueId);
+
         /// <summary>
         /// Publishes a heartbeat message to a RabbitMQ exchange, indicating the current status of the machine.
         /// </summary>

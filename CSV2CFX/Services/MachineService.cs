@@ -19,7 +19,7 @@ namespace CSV2CFX.Services
         private readonly IOptionsMonitor<MachineMetadataSetting> _machineMetadataOptions;
         private readonly IOptionsMonitor<CsvFilePathSetting> _csvFilePathOptions;
         private readonly IOptionsMonitor<RabbitMQPublisherSettings> _rabbitMQPublisherOptions;
-        private readonly MessageService _messageService;
+        private readonly IRabbitMQService _rabbitMQService;
         private readonly List<IDisposable> _optionsChangeTokens = new();
 
         private const string QUEUE_SUFFIX = "queue";
@@ -38,14 +38,14 @@ namespace CSV2CFX.Services
             IOptionsMonitor<MachineMetadataSetting> machineMetadataOptions,
             IOptionsMonitor<CsvFilePathSetting> csvFilePathOptions,
             IOptionsMonitor<RabbitMQPublisherSettings> rabbitMQPublisherOptions,
-            MessageService messageService)
+            IRabbitMQService rabbitMQService)
         {
             _logger = logger;
             _machineInfoOptions = machineInfoOptions;
             _machineMetadataOptions = machineMetadataOptions;
             _csvFilePathOptions = csvFilePathOptions;
             _rabbitMQPublisherOptions = rabbitMQPublisherOptions;
-            _messageService = messageService;
+            _rabbitMQService = rabbitMQService;
 
             // 设置配置更改监听
             SetupConfigurationChangeHandlers();
@@ -98,6 +98,38 @@ namespace CSV2CFX.Services
         }
 
         /// <summary>
+        /// Create RabbitMQ queues, exchanges, and bindings for CFX messages.
+        /// </summary>
+        /// <returns></returns>
+        public async Task CreateRabbitmqAsync(string uniqueId)
+        {
+            var rabbitMQPublisherSettings = _rabbitMQPublisherOptions.CurrentValue;
+
+            var keyValues = new Dictionary<string, string>
+            {
+                ["heartbeat"] = $"{rabbitMQPublisherSettings.Prefix}.heartbeat",
+                ["workstarted"] = $"{rabbitMQPublisherSettings.Prefix}.workstarted",
+                ["workcompleted"] = $"{rabbitMQPublisherSettings.Prefix}.workcompleted",
+                ["unitsprocessed"] = $"{rabbitMQPublisherSettings.Prefix}.unitsprocessed",
+                ["stationstatechanged"] = $"{rabbitMQPublisherSettings.Prefix}.stationstatechanged",
+                ["faultoccurred"] = $"{rabbitMQPublisherSettings.Prefix}.faultoccurred",
+                ["faultcleared"] = $"{rabbitMQPublisherSettings.Prefix}.faultcleared",
+            };
+
+            var exchangeName = $"{rabbitMQPublisherSettings.Prefix}.{EXCHANGE_SUFFIX}";
+            await _rabbitMQService.CreateExchangeAsync(exchangeName);
+
+            foreach (var item in keyValues)
+            {
+                var queueName = $"{item.Value}.{QUEUE_SUFFIX}".ToLower();
+                var routingKey = $"{item.Value}.{ROUTINGKEY_SUFFIX}".ToLower();
+
+                await _rabbitMQService.CreateQueueAsync(queueName);
+                await _rabbitMQService.BindQueueAsync(queueName, exchangeName, routingKey);
+            }
+        }
+
+        /// <summary>
         /// Publishes a heartbeat message to a RabbitMQ exchange, indicating the current status of the machine.
         /// </summary>
         /// <remarks>This method constructs a heartbeat message containing metadata about the machine,
@@ -146,10 +178,12 @@ namespace CSV2CFX.Services
                 MessageBody = body
             };
 
-            var topic = $"{rabbitMQPublisher.Prefix}.heartbeat";
+            var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+            var routingKey = $"{rabbitMQPublisher.Prefix}.heartbeat.{ROUTINGKEY_SUFFIX}";
+            var queueName = $"{rabbitMQPublisher.Prefix}.heartbeat.{QUEUE_SUFFIX}";
             var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
-            await _messageService.PublishMessageAsync(topic, message);
+            await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
 
             // 使用当前配置的心跳频率进行延迟
             var heartbeatFrequency = machineInfo.HeartbeatFrequency;
@@ -272,11 +306,14 @@ namespace CSV2CFX.Services
                 RequestID = Guid.NewGuid().ToString(),
                 MessageBody = body
             };
-            var topic = $"{rabbitMQPublisher.Prefix}.workstarted";
+
+            var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+            var routingKey = $"{rabbitMQPublisher.Prefix}.workstarted.{ROUTINGKEY_SUFFIX}";
+            var queueName = $"{rabbitMQPublisher.Prefix}.workstarted.{QUEUE_SUFFIX}";
             var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
             // workstarted
-            await _messageService.PublishMessageAsync(topic, message);
+            await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
         }
 
         // unitsprocessed
@@ -378,11 +415,13 @@ namespace CSV2CFX.Services
                     ["MessageBody"] = body
                 };
 
-                var topic = $"{rabbitMQPublisher.Prefix}.unitsprocessed";
+                var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+                var routingKey = $"{rabbitMQPublisher.Prefix}.unitsprocessed.{ROUTINGKEY_SUFFIX}";
+                var queueName = $"{rabbitMQPublisher.Prefix}.unitsprocessed.{QUEUE_SUFFIX}";
                 var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
                 // unitsprocessed
-                await _messageService.PublishMessageAsync(topic, message);
+                await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
             }
             catch (Exception ex)
             {
@@ -431,11 +470,13 @@ namespace CSV2CFX.Services
                 MessageBody = body
             };
 
-            var topic = $"{rabbitMQPublisher.Prefix}.workcompleted";
+            var exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+            var routingKey = $"{rabbitMQPublisher.Prefix}.workcompleted.{ROUTINGKEY_SUFFIX}";
+            var queueName = $"{rabbitMQPublisher.Prefix}.workcompleted.{QUEUE_SUFFIX}";
             var message = JsonSerializer.Serialize(json, _jsonSerializerOptions);
 
             // workcompleted
-            await _messageService.PublishMessageAsync(topic, message);
+            await _rabbitMQService.PublishMessageAsync(exchangeName, routingKey, message);
         }
 
         /// <summary>
@@ -544,10 +585,12 @@ namespace CSV2CFX.Services
                     }
                 };
 
-                var faultoccurred_topic = $"{rabbitMQPublisher.Prefix}.faultoccurred";
+                var faultoccurred_exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+                var faultoccurred_routingKey = $"{rabbitMQPublisher.Prefix}.faultoccurred.{ROUTINGKEY_SUFFIX}";
+                var faultoccurred_queueName = $"{rabbitMQPublisher.Prefix}.faultoccurred.{QUEUE_SUFFIX}";
                 var faultoccurred_message = JsonSerializer.Serialize(faultOccurredJson, _jsonSerializerOptions);
 
-                await _messageService.PublishMessageAsync(faultoccurred_topic, faultoccurred_message);
+                await _rabbitMQService.PublishMessageAsync(faultoccurred_exchangeName, faultoccurred_routingKey, faultoccurred_message);
 
                 // faultcleared
                 if (list.Count - 1 == lastErrorIndex)
@@ -582,10 +625,12 @@ namespace CSV2CFX.Services
                     }
                 };
 
-                var faultcleared_topic = $"{rabbitMQPublisher.Prefix}.faultcleared";
+                var faultcleared_exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+                var faultcleared_routingKey = $"{rabbitMQPublisher.Prefix}.faultcleared.{ROUTINGKEY_SUFFIX}";
+                var faultcleared_queueName = $"{rabbitMQPublisher.Prefix}.faultcleared.{QUEUE_SUFFIX}";
                 var faultcleared_message = JsonSerializer.Serialize(faultClearedJson, _jsonSerializerOptions);
 
-                await _messageService.PublishMessageAsync(faultcleared_topic, faultcleared_message);
+                await _rabbitMQService.PublishMessageAsync(faultcleared_exchangeName, faultcleared_routingKey, faultcleared_message);
 
                 // StationStateChanged
                 if (list.Count >= 2)
@@ -621,10 +666,12 @@ namespace CSV2CFX.Services
                         }
                     };
 
-                    var stationstatechanged_topic = $"{rabbitMQPublisher.Prefix}.stationstatechanged";
+                    var stationstatechanged_exchangeName = $"{rabbitMQPublisher.Prefix}.{EXCHANGE_SUFFIX}";
+                    var stationstatechanged_routingKey = $"{rabbitMQPublisher.Prefix}.stationstatechanged.{ROUTINGKEY_SUFFIX}";
+                    var stationstatechanged_queueName = $"{rabbitMQPublisher.Prefix}.stationstatechanged.{QUEUE_SUFFIX}";
                     var stationstatechanged_message = JsonSerializer.Serialize(stationstatechanged_json, _jsonSerializerOptions);
 
-                    await _messageService.PublishMessageAsync(stationstatechanged_topic, stationstatechanged_message);
+                    await _rabbitMQService.PublishMessageAsync(stationstatechanged_exchangeName, stationstatechanged_routingKey, stationstatechanged_message);
                 }
 
                 _logger.LogInformation("机器状态信息处理完成");
