@@ -58,12 +58,17 @@ namespace Flex.Csv2Cfx
         {
             await Host.StartAsync();
 
+            // 设置关闭模式：只有在主窗口关闭时才退出应用
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             // 显示登录窗口
             var loginWindow = GetService<LoginWindow>();
             if (loginWindow.ShowDialog() == true)
             {
                 // 登录成功，显示主窗口
+                ShutdownMode = ShutdownMode.OnMainWindowClose;  // 切换为主窗口关闭时退出
                 var mainWindow = GetService<MainWindow>();
+                MainWindow = mainWindow;  // 设置为主窗口
                 mainWindow.Show();
             }
             else
