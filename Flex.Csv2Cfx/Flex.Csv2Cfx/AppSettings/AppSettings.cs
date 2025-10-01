@@ -1,0 +1,15 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Flex.Csv2Cfx
+{
+    public class AppSettings
+    {
+        public MqttSettings MqttSettings { get; set; } = new();
+
+        public RabbitMqSettings RabbitMqSettings { get; set; } = new();
+    }
+}

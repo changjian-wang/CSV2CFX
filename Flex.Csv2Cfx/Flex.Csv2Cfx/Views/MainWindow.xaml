@@ -1,0 +1,188 @@
+﻿<ui:FluentWindow x:Class="Flex.Csv2Cfx.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:models="clr-namespace:Flex.Csv2Cfx.Models"
+        Title="WPF消息发布系统" 
+        Height="700" 
+        Width="1200"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="400"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 左侧导航栏 -->
+        <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}">
+            <StackPanel>
+                <!-- 用户信息 -->
+                <ui:CardControl Margin="10" Padding="15">
+                    <StackPanel>
+                        <ui:SymbolIcon Symbol="Contact24" Width="32" Height="32" 
+                                      Foreground="{DynamicResource SystemAccentColor}"/>
+                        <TextBlock Text="{Binding CurrentUser.DisplayName}" 
+                                  FontWeight="SemiBold" 
+                                  Margin="0,10,0,5"/>
+                        <TextBlock Text="{Binding CurrentUser.Role}" 
+                                  FontSize="11" 
+                                  Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                    </StackPanel>
+                </ui:CardControl>
+
+                <!-- 状态信息 -->
+                <ui:CardControl Margin="10" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="连接状态" 
+                                  FontSize="12" 
+                                  Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                        <TextBlock Text="{Binding ConnectionStatus}" 
+                                  FontWeight="SemiBold"
+                                  Foreground="{Binding ConnectionStatus, Converter={ui:StringToBrushConverter When=已连接=Green, 连接中=Orange, 连接失败=Red, 未连接=Gray}}"/>
+
+                        <TextBlock Text="{Binding StatsText}" 
+                                  FontSize="11" 
+                                  Margin="0,10,0,0"
+                                  Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                    </StackPanel>
+                </ui:CardControl>
+
+                <!-- 操作按钮 -->
+                <StackPanel Margin="10" Spacing="10">
+                    <Button Content="重新连接" 
+                           Command="{Binding ReconnectCommand}"
+                           ui:ButtonAppearance.Secondary/>
+                    <Button Content="清空消息" 
+                           Command="{Binding ClearMessagesCommand}"
+                           ui:ButtonAppearance.Caution/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 中间消息发布区域 -->
+        <Grid Grid.Column="1" Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 发布面板 -->
+            <ui:CardControl Grid.Row="0" Margin="0,0,0,10">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="消息发布" FontSize="16" FontWeight="SemiBold"/>
+
+                    <!-- 主题设置 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="AMQP路由键" FontSize="12" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding AmqpTopic}" PlaceholderText="例如: wpf.test.message"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="MQTT主题" FontSize="12" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding MqttTopic}" PlaceholderText="例如: wpf/system/message"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 消息内容 -->
+                    <StackPanel>
+                        <TextBlock Text="消息内容" FontSize="12" Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding MessageContent}" 
+                                AcceptsReturn="True" 
+                                TextWrapping="Wrap"
+                                Height="80"
+                                PlaceholderText="请输入要发送的消息内容..."/>
+                    </StackPanel>
+
+                    <!-- 发布按钮 -->
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Content="发布AMQP消息" 
+                               Command="{Binding SendAmqpCommand}"
+                               ui:ButtonAppearance.Primary/>
+                        <Button Content="发布MQTT消息" 
+                               Command="{Binding SendMqttCommand}"
+                               ui:ButtonAppearance.Primary/>
+                        <Button Content="同时发布" 
+                               Command="{Binding SendBothCommand}"
+                               ui:ButtonAppearance.Success/>
+                    </StackPanel>
+                </StackPanel>
+            </ui:CardControl>
+
+            <!-- 空白区域 -->
+            <Border Grid.Row="1" Background="{DynamicResource ControlFillColorSecondary}" CornerRadius="5">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="Mail24" Width="64" Height="64" 
+                                  Foreground="{DynamicResource SystemBaseMediumColor}"/>
+                    <TextBlock Text="WPF消息发布系统" 
+                              FontSize="18" 
+                              FontWeight="SemiBold"
+                              Margin="0,20,0,10"/>
+                    <TextBlock Text="基于 RabbitMQ.Client 7.1.2 和 MQTTnet 5.0.1"
+                              FontSize="11"
+                              Foreground="{DynamicResource SystemBaseMediumColor}"
+                              TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 右侧消息历史 -->
+        <Border Grid.Column="2" BorderThickness="1,0,0,0" 
+                BorderBrush="{DynamicResource CardStrokeColorDefault}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 标题 -->
+                <Border Grid.Row="0" Background="{DynamicResource CardBackgroundFillColorDefault}" 
+                        Padding="15,10" BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource CardStrokeColorDefault}">
+                    <TextBlock Text="已发送消息" FontWeight="SemiBold" FontSize="14"/>
+                </Border>
+
+                <!-- 消息列表 -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding SentMessages}" Margin="5">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:Message}">
+                                <ui:CardControl Margin="5,2" Padding="10" CornerRadius="3">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Protocol}" 
+                                                      FontWeight="SemiBold"
+                                                      Foreground="{Binding Protocol, Converter={ui:StringToBrushConverter When=AMQP=Blue, MQTT=Green, SYSTEM=Gray}}"/>
+                                            <TextBlock Text="{Binding Topic}" 
+                                                      FontSize="10"
+                                                      Foreground="{DynamicResource SystemBaseMediumColor}"
+                                                      Margin="10,0,0,0"/>
+                                            <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" 
+                                                      FontSize="9"
+                                                      Foreground="{DynamicResource SystemBaseMediumColor}"
+                                                      Margin="10,0,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Content}" 
+                                                  FontSize="11"
+                                                  TextWrapping="Wrap"
+                                                  Margin="0,5,0,0"/>
+                                        <TextBlock Text="{Binding Status}" 
+                                                  FontSize="10"
+                                                  Foreground="{Binding Status, Converter={ui:StringToBrushConverter When=成功=Green, 失败=Red}}"
+                                                  Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </ui:CardControl>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
