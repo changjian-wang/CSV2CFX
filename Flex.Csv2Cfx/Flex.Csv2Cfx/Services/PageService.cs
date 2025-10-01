@@ -10,7 +10,7 @@ using Wpf.Ui.Abstractions;
 
 namespace Flex.Csv2Cfx.Services
 {
-    public class PageService : INavigationViewPageProvider
+    public class PageService : IPageService
     {
         public ObservableCollection<NavigationItem> GetNavigationItems(User user) 
         {

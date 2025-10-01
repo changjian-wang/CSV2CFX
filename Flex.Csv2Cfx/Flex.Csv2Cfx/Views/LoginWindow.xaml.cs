@@ -1,4 +1,5 @@
 ﻿using Flex.Csv2Cfx.ViewModels;
+using System.Windows;
 using Wpf.Ui.Controls;
 
 namespace Flex.Csv2Cfx.Views
@@ -10,8 +11,16 @@ namespace Flex.Csv2Cfx.Views
     {
         public LoginWindow(LoginViewModel viewModel)
         {
-            this.DataContext = viewModel;
+            DataContext = viewModel;
             InitializeComponent();
+        }
+
+        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is LoginViewModel viewModel)
+            {
+                viewModel.Password = ((PasswordBox)sender).Password;
+            }
         }
     }
 }

@@ -18,12 +18,15 @@
                       Margin="0,0,0,30"/>
 
             <!-- 登录表单 -->
-            <StackPanel Spacing="15">
-                <TextBox PlaceholderText="用户名"
-                        Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
+            <StackPanel>
+                <ui:TextBox PlaceholderText="用户名"
+                        Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                        Margin="0,0,0,15"/>
 
-                <PasswordBox PlaceholderText="密码"
-                           Password="{Binding Password, UpdateSourceTrigger=PropertyChanged}"/>
+                <ui:PasswordBox PlaceholderText="密码"
+                           x:Name="PasswordBoxControl"
+                           PasswordChanged="PasswordBox_PasswordChanged"
+                           Margin="0,0,0,15"/>
 
                 <!-- 错误信息 -->
                 <Border Background="#FFE7E7" 
@@ -31,16 +34,18 @@
                        BorderThickness="1" 
                        CornerRadius="4"
                        Padding="10,8"
-                       Visibility="{Binding HasError, Converter={ui:BooleanToVisibilityConverter}}">
+                       Margin="0,0,0,15"
+                       Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <TextBlock Text="{Binding ErrorMessage}" 
                               Foreground="#D13438"
                               TextWrapping="Wrap"/>
                 </Border>
 
                 <!-- 登录按钮 -->
-                <Button Content="登录" 
+                <ui:Button Content="登录" 
                        Command="{Binding LoginCommand}"
                        CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+                       Appearance="Primary"
                        HorizontalAlignment="Stretch"
                        Height="35"/>
             </StackPanel>

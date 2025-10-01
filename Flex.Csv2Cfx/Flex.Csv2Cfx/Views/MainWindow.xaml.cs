@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Flex.Csv2Cfx.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,16 +12,18 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Wpf.Ui.Controls;
 
 namespace Flex.Csv2Cfx.Views
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : FluentWindow
     {
-        public MainWindow()
+        public MainWindow(MainViewModel viewModel)
         {
+            DataContext = viewModel;
             InitializeComponent();
         }
     }
