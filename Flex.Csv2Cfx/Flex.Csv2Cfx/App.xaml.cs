@@ -39,14 +39,17 @@ namespace Flex.Csv2Cfx
             services.AddSingleton<IMessageService, MessageService>();
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<IUserContext, UserContext>();
+            services.AddSingleton<IConfigurationService, ConfigurationService>();
 
             // 注册ViewModels
             services.AddTransient<LoginViewModel>();
             services.AddTransient<MainViewModel>();
+            services.AddTransient<SettingsViewModel>();
 
             // 注册Views
             services.AddSingleton<LoginWindow>();
             services.AddSingleton<MainWindow>();
+            services.AddTransient<SettingsWindow>();
         }
 
         public static T GetService<T>() where T : class

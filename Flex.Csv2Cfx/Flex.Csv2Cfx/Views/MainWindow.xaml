@@ -75,7 +75,11 @@
                            Margin="0,0,0,10"/>
                     <ui:Button Content="清空消息" 
                            Command="{Binding ClearMessagesCommand}"
-                           Appearance="Danger"/>
+                           Appearance="Danger"
+                           Margin="0,0,0,10"/>
+                    <ui:Button Content="系统配置" 
+                       Command="{Binding OpenSettingsCommand}"
+                       Appearance="Secondary"/>
                 </StackPanel>
             </StackPanel>
         </Border>

@@ -1,5 +1,6 @@
 ﻿using Flex.Csv2Cfx.Interfaces;
 using Flex.Csv2Cfx.Models;
+using Flex.Csv2Cfx.Views;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -71,6 +72,8 @@ namespace Flex.Csv2Cfx.ViewModels
         public ICommand? SendBothCommand { get; }
         public ICommand? ReconnectCommand { get; }
         public ICommand? ClearMessagesCommand { get; }
+        public ICommand OpenSettingsCommand { get; }
+
 
         public MainViewModel(IPageService pageService, IAuthService authService, IMessageService messageService)
         {
@@ -86,6 +89,7 @@ namespace Flex.Csv2Cfx.ViewModels
             SendMqttCommand = new RelayCommand(async _ => await ExecuteSendMqtt());
             SendBothCommand = new RelayCommand(async _ => await ExecuteSendBoth());
             ReconnectCommand = new RelayCommand(async _ => await ExecuteReconnect());
+            OpenSettingsCommand = new RelayCommand(ExecuteOpenSettings);
 
             // 初始化消息服务连接
             _ = InitializeMessageServiceAsync();
@@ -105,6 +109,12 @@ namespace Flex.Csv2Cfx.ViewModels
             {
                 ConnectionStatus = "连接失败";
             }
+        }
+
+        private void ExecuteOpenSettings(object? parameter)
+        {
+            var settingsWindow = App.GetService<SettingsWindow>();
+            settingsWindow.ShowDialog();
         }
 
         private void UpdateStats(Message message)
