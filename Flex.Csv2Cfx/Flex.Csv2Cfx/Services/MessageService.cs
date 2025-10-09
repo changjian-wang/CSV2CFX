@@ -56,6 +56,31 @@ namespace Flex.Csv2Cfx.Services
                 _amqpConnection = await _amqpFactory.CreateConnectionAsync();
                 _amqpChannel = await _amqpConnection.CreateChannelAsync();
 
+                // 声明队列并绑定
+                List<string> topics = new List<string>
+                {
+                    "system/heartbeat",
+                    "system/works",
+                    "system/states"
+                };
+
+                // 创建队列
+                foreach (var topic in topics)
+                {
+                    string queueName = $"common.queue.{topic}";
+
+                    await _amqpChannel.QueueDeclareAsync(
+                        queue: queueName,
+                        durable: true,
+                        exclusive: false,
+                        autoDelete: false);
+
+                    await _amqpChannel.QueueBindAsync(
+                        queue: queueName,
+                        exchange: EXCHANGE_NAME,
+                        routingKey: topic); // 这里的 routingKey 要与 MQTT 发布的 topic 保持一致
+                }
+
                 // 连接MQTT
                 var mqttOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer(_settings.MqttSettings.Server, _settings.MqttSettings.Port)
