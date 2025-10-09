@@ -12,12 +12,15 @@ namespace Flex.Csv2Cfx.Interfaces
     {
         bool IsConnected { get; }
         IReadOnlyList<Message> SentMessages { get; }
+        MessageProtocol CurrentProtocol { get; set; }
 
         Task<bool> ConnectAsync();
         Task<PublishResult> PublishAmqpMessageAsync(string routingKey, string message);
         Task<PublishResult> PublishMqttMessageAsync(string topic, string message);
         Task<PublishResult> PublishBothAsync(string topic, string message);
+        Task<PublishResult> PublishMessageAsync(string topic, string message); // 新增：根据当前协议发送
         Task<List<Message>> GetRecentSentMessagesAsync(int count = 50);
         void Disconnect();
+        void SetProtocol(MessageProtocol protocol);
     }
 }

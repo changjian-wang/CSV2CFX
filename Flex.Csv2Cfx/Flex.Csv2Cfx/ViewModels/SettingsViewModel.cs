@@ -14,6 +14,15 @@ namespace Flex.Csv2Cfx.ViewModels
     {
         private readonly IConfigurationService _configurationService;
 
+        private MessageProtocol _selectedProtocol;
+        public MessageProtocol SelectedProtocol
+        {
+            get => _selectedProtocol;
+            set => SetProperty(ref _selectedProtocol, value);
+        }
+
+        public IEnumerable<MessageProtocol> AvailableProtocols => Enum.GetValues<MessageProtocol>();
+
         // MQTT Settings
         public string MqttServer { get; set; } = string.Empty;
         public string MqttPort { get; set; } = string.Empty;
@@ -67,6 +76,9 @@ namespace Flex.Csv2Cfx.ViewModels
             RabbitMqUsername = settings.RabbitMqSettings.Username;
             RabbitMqPassword = settings.RabbitMqSettings.Password;
             RabbitMqVirtualHost = settings.RabbitMqSettings.VirtualHost;
+
+            // 添加协议设置加载
+            SelectedProtocol = settings.PreferredProtocol;
 
             OnPropertyChanged(string.Empty); // 通知所有属性更新
         }

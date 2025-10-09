@@ -21,25 +21,26 @@ namespace Flex.Csv2Cfx.Services
         private readonly AppSettings _settings;
         private readonly ConnectionFactory _amqpFactory;
         private readonly MqttClientFactory _mqttFactory;
-        // private readonly AppSettings _settings;
         private bool _disposed = false;
         private const string EXCHANGE_NAME = "amq.topic";
         private readonly List<Message> _sentMessages = new();
-        public bool IsConnected => (_amqpConnection?.IsOpen ?? false) || (_mqttClient?.IsConnected ?? false);
 
+        public bool IsConnected => (_amqpConnection?.IsOpen ?? false) || (_mqttClient?.IsConnected ?? false);
         public IReadOnlyList<Message> SentMessages => _sentMessages.AsReadOnly();
+        public MessageProtocol CurrentProtocol { get; set; }
 
         public MessageService(IConfigurationService configuration)
         {
             _configuration = configuration;
             _settings = _configuration.GetSettings();
+            CurrentProtocol = _settings.PreferredProtocol;
+
             _amqpFactory = new ConnectionFactory()
             {
                 HostName = _settings.RabbitMqSettings.HostName,
                 UserName = _settings.RabbitMqSettings.Username,
                 Password = _settings.RabbitMqSettings.Password,
                 VirtualHost = _settings.RabbitMqSettings.VirtualHost,
-                // 新版本推荐设置
                 AutomaticRecoveryEnabled = true,
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
             };
@@ -48,65 +49,119 @@ namespace Flex.Csv2Cfx.Services
             _mqttClient = _mqttFactory.CreateMqttClient();
         }
 
+        public void SetProtocol(MessageProtocol protocol)
+        {
+            CurrentProtocol = protocol;
+            AddSystemMessage("系统", $"切换到协议: {protocol}");
+        }
+
         public async Task<bool> ConnectAsync()
         {
             try
             {
-                // 连接AMQP
-                _amqpConnection = await _amqpFactory.CreateConnectionAsync();
-                _amqpChannel = await _amqpConnection.CreateChannelAsync();
+                bool amqpConnected = false;
+                bool mqttConnected = false;
 
-                // 声明队列并绑定
-                List<string> topics = new List<string>
+                // 连接AMQP (如果需要)
+                if (CurrentProtocol == MessageProtocol.AMQP || CurrentProtocol == MessageProtocol.Both)
                 {
-                    "system/heartbeat",
-                    "system/works",
-                    "system/states"
-                };
+                    try
+                    {
+                        _amqpConnection = await _amqpFactory.CreateConnectionAsync();
+                        _amqpChannel = await _amqpConnection.CreateChannelAsync();
 
-                // 创建队列
-                foreach (var topic in topics)
-                {
-                    string queueName = $"common.queue.{topic}";
+                        // 声明统一的队列并绑定
+                        List<string> topics = new List<string>
+                        {
+                            "system/heartbeat",
+                            "system/works",
+                            "system/states"
+                        };
 
-                    await _amqpChannel.QueueDeclareAsync(
-                        queue: queueName,
-                        durable: true,
-                        exclusive: false,
-                        autoDelete: false);
+                        // 创建统一的队列名称，确保MQTT和AMQP使用相同的队列概念
+                        foreach (var topic in topics)
+                        {
+                            string queueName = $"unified.queue.{topic.Replace("/", ".")}";
 
-                    await _amqpChannel.QueueBindAsync(
-                        queue: queueName,
-                        exchange: EXCHANGE_NAME,
-                        routingKey: topic); // 这里的 routingKey 要与 MQTT 发布的 topic 保持一致
+                            await _amqpChannel.QueueDeclareAsync(
+                                queue: queueName,
+                                durable: true,
+                                exclusive: false,
+                                autoDelete: false);
+
+                            await _amqpChannel.QueueBindAsync(
+                                queue: queueName,
+                                exchange: EXCHANGE_NAME,
+                                routingKey: topic);
+                        }
+
+                        amqpConnected = true;
+                        AddSystemMessage("系统", "AMQP连接成功");
+                    }
+                    catch (Exception ex)
+                    {
+                        AddSystemMessage("系统", $"AMQP连接失败: {ex.Message}");
+                    }
                 }
 
-                // 连接MQTT
-                var mqttOptions = new MqttClientOptionsBuilder()
-                    .WithTcpServer(_settings.MqttSettings.Server, _settings.MqttSettings.Port)
-                    .WithCredentials(_settings.MqttSettings.Username, _settings.MqttSettings.Password)
-                    .WithClientId($"{_settings.MqttSettings.ClientIdPrefix}-{Guid.NewGuid()}")
-                    .WithCleanSession()
-                    .Build();
+                // 连接MQTT (如果需要)
+                if (CurrentProtocol == MessageProtocol.MQTT || CurrentProtocol == MessageProtocol.Both)
+                {
+                    try
+                    {
+                        var mqttOptions = new MqttClientOptionsBuilder()
+                            .WithTcpServer(_settings.MqttSettings.Server, _settings.MqttSettings.Port)
+                            .WithCredentials(_settings.MqttSettings.Username, _settings.MqttSettings.Password)
+                            .WithClientId($"{_settings.MqttSettings.ClientIdPrefix}-{Guid.NewGuid()}")
+                            .WithCleanSession()
+                            .Build();
 
-                var connectResult = await _mqttClient!.ConnectAsync(mqttOptions, CancellationToken.None);
+                        var connectResult = await _mqttClient!.ConnectAsync(mqttOptions, CancellationToken.None);
 
-                if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
+                        if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
+                        {
+                            mqttConnected = true;
+                            AddSystemMessage("系统", "MQTT连接成功");
+                        }
+                        else
+                        {
+                            AddSystemMessage("系统", $"MQTT连接失败，结果代码: {connectResult.ResultCode}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddSystemMessage("系统", $"MQTT连接失败: {ex.Message}");
+                    }
+                }
+
+                bool connected = (CurrentProtocol == MessageProtocol.AMQP && amqpConnected) ||
+                               (CurrentProtocol == MessageProtocol.MQTT && mqttConnected) ||
+                               (CurrentProtocol == MessageProtocol.Both && (amqpConnected || mqttConnected));
+
+                if (connected)
                 {
                     AddSystemMessage("系统", "消息服务连接成功");
-                    return true;
                 }
-                else
-                {
-                    AddSystemMessage("系统", $"MQTT连接失败，结果代码: {connectResult.ResultCode}");
-                    return false;
-                }
+
+                return connected;
             }
             catch (Exception ex)
             {
                 AddSystemMessage("系统", $"连接消息服务失败: {ex.Message}");
                 return false;
             }
+        }
+
+        // 新增：根据当前协议发送消息
+        public async Task<PublishResult> PublishMessageAsync(string topic, string message)
+        {
+            return CurrentProtocol switch
+            {
+                MessageProtocol.MQTT => await PublishMqttMessageAsync(topic, message),
+                MessageProtocol.AMQP => await PublishAmqpMessageAsync(topic, message),
+                MessageProtocol.Both => await PublishBothAsync(topic, message),
+                _ => new PublishResult(false, "未知的协议类型")
+            };
         }
 
         public async Task<PublishResult> PublishAmqpMessageAsync(string routingKey, string message)
@@ -143,7 +198,7 @@ namespace Flex.Csv2Cfx.Services
                 };
 
                 _sentMessages.Insert(0, sendMessage);
-                return new PublishResult(true, "消息发布成功.");
+                return new PublishResult(true, "AMQP消息发布成功");
             }
             catch (Exception ex)
             {
@@ -157,7 +212,7 @@ namespace Flex.Csv2Cfx.Services
                 };
 
                 _sentMessages.Insert(0, errorMessage);
-                return new PublishResult(false, $"消息发布失败: {ex.Message}");
+                return new PublishResult(false, $"AMQP消息发布失败: {ex.Message}");
             }
         }
 
@@ -189,7 +244,7 @@ namespace Flex.Csv2Cfx.Services
                 };
 
                 _sentMessages.Insert(0, sentMessage);
-                return new PublishResult(true, "消息发布成功");
+                return new PublishResult(true, "MQTT消息发布成功");
             }
             catch (Exception ex)
             {
@@ -203,7 +258,7 @@ namespace Flex.Csv2Cfx.Services
                 };
 
                 _sentMessages.Insert(0, errorMessage);
-                return new PublishResult(false, $"发布失败: {ex.Message}");
+                return new PublishResult(false, $"MQTT发布失败: {ex.Message}");
             }
         }
 

@@ -11,5 +11,14 @@ namespace Flex.Csv2Cfx
         public MqttSettings MqttSettings { get; set; } = new();
 
         public RabbitMqSettings RabbitMqSettings { get; set; } = new();
+
+        public MessageProtocol PreferredProtocol { get; set; } = MessageProtocol.Both;
+    }
+
+    public enum MessageProtocol
+    {
+        MQTT,
+        AMQP,
+        Both
     }
 }

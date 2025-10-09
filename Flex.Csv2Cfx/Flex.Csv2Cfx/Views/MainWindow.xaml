@@ -20,10 +20,9 @@
         <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}">
             <StackPanel>
                 <!-- 用户信息 -->
-                <ui:CardControl Margin="10" Padding="15">
+                <ui:CardControl Margin="10" Padding="15" HorizontalContentAlignment="Right">
                     <StackPanel>
-                        <ui:SymbolIcon Symbol="Person24" Width="32" Height="32" 
-                                      Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+                        <ui:SymbolIcon Symbol="Person24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
                         <TextBlock Text="{Binding CurrentUser.Data.UserName}" 
                                   FontWeight="SemiBold" 
                                   Margin="0,10,0,5"/>
@@ -34,7 +33,7 @@
                 </ui:CardControl>
 
                 <!-- 状态信息 -->
-                <ui:CardControl Margin="10" Padding="15">
+                <ui:CardControl HorizontalContentAlignment="Left" Margin="10" Padding="15">
                     <StackPanel>
                         <TextBlock Text="连接状态" 
                                   FontSize="12" 
@@ -93,8 +92,16 @@
             </Grid.RowDefinitions>
 
             <!-- 发布面板 -->
-            <ui:CardControl Grid.Row="0" Margin="0,0,0,10">
-                <StackPanel>
+            <ui:CardControl Grid.Row="0" Margin="0,0,0,10" HorizontalContentAlignment="Center">
+                <StackPanel HorizontalAlignment="Left">
+                    <TextBlock Text="消息协议:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox Name="ProtocolComboBox" 
+                      ItemsSource="{Binding AvailableProtocols}"
+                      SelectedItem="{Binding SelectedProtocol}"
+                      Width="120" Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding ProtocolDisplayText}" 
+                       VerticalAlignment="Center" 
+                       Foreground="Blue"/>
                     <TextBlock Text="消息发布" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
 
                     <!-- 主题设置 -->
@@ -125,18 +132,21 @@
                     </StackPanel>
 
                     <!-- 发布按钮 -->
-                    <StackPanel Orientation="Horizontal">
-                        <ui:Button Content="发布AMQP消息" 
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <ui:Button Content="发布AMQP" 
                                Command="{Binding SendAmqpCommand}"
                                Appearance="Primary"
                                Margin="0,0,10,0"/>
-                        <ui:Button Content="发布MQTT消息" 
+                        <ui:Button Content="发布MQTT" 
                                Command="{Binding SendMqttCommand}"
                                Appearance="Primary"
                                Margin="0,0,10,0"/>
                         <ui:Button Content="同时发布" 
                                Command="{Binding SendBothCommand}"
                                Appearance="Success"/>
+                        <ui:Button Content="发送消息" 
+                           Command="{Binding SendMessageCommand}"
+                           Appearance="Success"/>
                     </StackPanel>
                 </StackPanel>
             </ui:CardControl>
@@ -170,16 +180,18 @@
                 <!-- 标题 -->
                 <Border Grid.Row="0" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
                         Padding="15,10" BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-                    <TextBlock Text="已发送消息" FontWeight="SemiBold" FontSize="14"/>
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        Margin="0, 12, 10, 0"
+                        CornerRadius="3">
+                    <TextBlock Text="已发送消息" FontWeight="SemiBold" FontSize="14" />
                 </Border>
 
                 <!-- 消息列表 -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding SentMessages}" Margin="5">
+                    <ItemsControl ItemsSource="{Binding SentMessages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:Message}">
-                                <ui:CardControl Margin="5,2" Padding="10" CornerRadius="3">
+                                <ui:CardControl Margin="0, 2, 10, 0" Padding="10" CornerRadius="3">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock FontWeight="SemiBold">

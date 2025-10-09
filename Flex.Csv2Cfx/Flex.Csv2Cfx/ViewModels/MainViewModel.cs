@@ -26,6 +26,22 @@ namespace Flex.Csv2Cfx.ViewModels
         }
 
         public User CurrentUser => _authService.CurrentUser ?? new User();
+        private MessageProtocol _selectedProtocol;
+        public string ProtocolDisplayText => $"当前协议: {SelectedProtocol}";
+        public IEnumerable<MessageProtocol> AvailableProtocols => Enum.GetValues<MessageProtocol>();
+
+        public MessageProtocol SelectedProtocol
+        {
+            get => _selectedProtocol;
+            set
+            {
+                if (SetProperty(ref _selectedProtocol, value))
+                {
+                    _messageService.SetProtocol(value);
+                    OnPropertyChanged(nameof(ProtocolDisplayText));
+                }
+            }
+        }
 
         public string ConnectionStatus
         {
@@ -63,6 +79,7 @@ namespace Flex.Csv2Cfx.ViewModels
         public ICommand? SendAmqpCommand { get; }
         public ICommand? SendMqttCommand { get; }
         public ICommand? SendBothCommand { get; }
+        public ICommand? SendMessageCommand { get; }
         public ICommand? ReconnectCommand { get; }
         public ICommand? ClearMessagesCommand { get; }
         public ICommand OpenSettingsCommand { get; }
@@ -78,10 +95,11 @@ namespace Flex.Csv2Cfx.ViewModels
 
             NavigateCommand = new RelayCommand(ExecuteNavigate);
             ClearMessagesCommand = new RelayCommand(ExecuteClearMessages);
-            SendAmqpCommand = new RelayCommand(async _ => await ExecuteSendAmqp());
-            SendMqttCommand = new RelayCommand(async _ => await ExecuteSendMqtt());
-            SendBothCommand = new RelayCommand(async _ => await ExecuteSendBoth());
-            ReconnectCommand = new RelayCommand(async _ => await ExecuteReconnect());
+            SendAmqpCommand = new RelayCommand(async _ => await ExecuteSendAmqpAsync());
+            SendMqttCommand = new RelayCommand(async _ => await ExecuteSendMqttAsync());
+            SendBothCommand = new RelayCommand(async _ => await ExecuteSendBothAsync());
+            SendMessageCommand = new RelayCommand(async _ => await ExecuteSendMessageAsync());
+            ReconnectCommand = new RelayCommand(async _ => await ExecuteReconnectAsync());
             OpenSettingsCommand = new RelayCommand(ExecuteOpenSettings);
 
             // 初始化消息服务连接
@@ -96,7 +114,7 @@ namespace Flex.Csv2Cfx.ViewModels
             if (connected)
             {
                 ConnectionStatus = "已连接";
-                await LoadSentMessages();
+                await LoadSentMessagesAsync();
             }
             else
             {
@@ -120,7 +138,7 @@ namespace Flex.Csv2Cfx.ViewModels
             OnPropertyChanged(nameof(StatsText));
         }
 
-        private async Task LoadSentMessages()
+        private async Task LoadSentMessagesAsync()
         {
             var messages = await _messageService.GetRecentSentMessagesAsync(50);
             foreach (var msg in messages)
@@ -138,7 +156,30 @@ namespace Flex.Csv2Cfx.ViewModels
             }
         }
 
-        private async Task ExecuteSendAmqp()
+        // 新增统一发送方法
+        private async Task ExecuteSendMessageAsync()
+        {
+            if (string.IsNullOrWhiteSpace(MessageContent))
+                return;
+
+            var result = await _messageService.PublishMessageAsync(Topic, MessageContent);
+
+            if (result.Success)
+            {
+                SuccessCount++;
+                System.Diagnostics.Debug.WriteLine($"消息发送成功: {result.Message}");
+            }
+            else
+            {
+                FailCount++;
+                System.Diagnostics.Debug.WriteLine($"消息发送失败: {result.Message}");
+            }
+
+            await RefreshMessagesAsync();
+            OnPropertyChanged(nameof(StatsText));
+        }
+
+        private async Task ExecuteSendAmqpAsync()
         {
             if (string.IsNullOrWhiteSpace(MessageContent))
                 return;
@@ -158,11 +199,11 @@ namespace Flex.Csv2Cfx.ViewModels
                 System.Diagnostics.Debug.WriteLine($"AMQP消息发送失败: {result.Message}");
             }
 
-            await RefreshMessages();
+            await RefreshMessagesAsync();
             OnPropertyChanged(nameof(StatsText));
         }
 
-        private async Task ExecuteSendMqtt()
+        private async Task ExecuteSendMqttAsync()
         {
             if (string.IsNullOrWhiteSpace(MessageContent))
                 return;
@@ -182,11 +223,11 @@ namespace Flex.Csv2Cfx.ViewModels
                 System.Diagnostics.Debug.WriteLine($"MQTT消息发送失败: {result.Message}");
             }
 
-            await RefreshMessages();
+            await RefreshMessagesAsync();
             OnPropertyChanged(nameof(StatsText));
         }
 
-        private async Task ExecuteSendBoth()
+        private async Task ExecuteSendBothAsync()
         {
             if (string.IsNullOrWhiteSpace(MessageContent))
                 return;
@@ -206,18 +247,18 @@ namespace Flex.Csv2Cfx.ViewModels
                 System.Diagnostics.Debug.WriteLine($"消息发送结果: {result.Message}");
             }
 
-            await RefreshMessages();
+            await RefreshMessagesAsync();
             OnPropertyChanged(nameof(StatsText));
         }
 
-        private async Task ExecuteReconnect()
+        private async Task ExecuteReconnectAsync()
         {
             ConnectionStatus = "重新连接中...";
             _messageService.Disconnect();
             await InitializeMessageServiceAsync();
         }
 
-        private async Task RefreshMessages()
+        private async Task RefreshMessagesAsync()
         {
             var messages = await _messageService.GetRecentSentMessagesAsync();
             App.Current.Dispatcher.Invoke(() =>
