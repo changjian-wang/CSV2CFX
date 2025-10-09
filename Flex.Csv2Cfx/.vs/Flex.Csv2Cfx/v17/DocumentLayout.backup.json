@@ -1,73 +1,73 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\github\\Flex.Csv2Cfx\\",
+  "WorkspaceRootPath": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\views\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\views\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\views\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\viewmodels\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\viewmodels\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\services\\pageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\services\\pageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\services\\usercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\services\\usercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\interfaces\\iusercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\interfaces\\iusercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\models\\message.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\models\\message.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\models\\navigationitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\models\\navigationitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\models\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\interfaces\\ipageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\interfaces\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\views\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\views\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\viewmodels\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\viewmodels\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\viewmodels\\mainviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\services\\pageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\services\\pageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\services\\usercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\services\\usercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\interfaces\\iusercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\interfaces\\iusercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\models\\message.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\models\\message.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\models\\navigationitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\models\\navigationitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\interfaces\\ipageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\interfaces\\ipageservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\flex.csv2cfx\\flex.csv2cfx\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "AbsoluteMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|c:\\github\\csv2cfx\\flex.csv2cfx\\flex.csv2cfx\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{E7DD2A51-213C-4E9A-80F3-4ADB35B59FE6}|Flex.Csv2Cfx\\Flex.Csv2Cfx.csproj|solutionrelative:flex.csv2cfx\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     }
   ],
@@ -78,62 +78,73 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 5,
           "Children": [
             {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 5,
               "Title": "LoginWindow.xaml.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Views\\LoginWindow.xaml.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Views\\LoginWindow.xaml.cs",
-              "ViewState": "AgIAAAoAAAAAAAAAAAAkwAwAAAAMAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-01T13:00:02.843Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "LoginWindow.xaml",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Views\\LoginWindow.xaml",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\LoginWindow.xaml",
               "RelativeToolTip": "Flex.Csv2Cfx\\Views\\LoginWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-10-01T12:59:56.126Z"
+              "WhenOpened": "2025-10-01T12:59:56.126Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "MainWindow.xaml.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Views\\MainWindow.xaml.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Views\\MainWindow.xaml.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAARAAAAAAAAAA==",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABcAAAAyAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-01T12:57:15.604Z"
+              "WhenOpened": "2025-10-01T12:57:15.604Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "MainWindow.xaml",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Views\\MainWindow.xaml",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Views\\MainWindow.xaml",
               "RelativeToolTip": "Flex.Csv2Cfx\\Views\\MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-10-01T12:56:50.854Z"
+              "WhenOpened": "2025-10-01T12:56:50.854Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "App.xaml.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\App.xaml.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\App.xaml.cs",
               "ViewState": "AgIAAEkAAAAAAAAAAAAIwFcAAAAbAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -141,11 +152,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "LoginViewModel.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\LoginViewModel.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\LoginViewModel.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\ViewModels\\LoginViewModel.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\LoginViewModel.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\LoginViewModel.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\ViewModels\\LoginViewModel.cs",
               "ViewState": "AgIAABsAAAAAAAAAAAAuwCMAAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -153,11 +164,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 8,
               "Title": "MainViewModel.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\MainViewModel.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\MainViewModel.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\ViewModels\\MainViewModel.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\MainViewModel.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\ViewModels\\MainViewModel.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\ViewModels\\MainViewModel.cs",
               "ViewState": "AgIAAEcAAAAAAAAAAAA6wFMAAABKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -165,23 +176,24 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 4,
               "Title": "IAuthService.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IAuthService.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IAuthService.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Interfaces\\IAuthService.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IAuthService.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IAuthService.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Interfaces\\IAuthService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAALAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-01T06:41:23.173Z"
+              "WhenOpened": "2025-10-01T06:41:23.173Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "Message.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\Message.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\Message.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Models\\Message.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\Message.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\Message.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Models\\Message.cs",
               "ViewState": "AgIAABYAAAAAAAAAAAAgwCcAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -189,11 +201,24 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 3,
+              "Title": "User.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\User.cs",
+              "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Models\\User.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\User.cs",
+              "RelativeToolTip": "Flex.Csv2Cfx\\Models\\User.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAIwCEAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-28T14:24:21.704Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": "UserContext.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\UserContext.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\UserContext.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Services\\UserContext.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\UserContext.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\UserContext.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Services\\UserContext.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAABOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -201,11 +226,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "AuthService.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\AuthService.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\AuthService.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Services\\AuthService.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\AuthService.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\AuthService.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Services\\AuthService.cs",
               "ViewState": "AgIAACUAAAAAAAAAAAAtwBAAAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -213,11 +238,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "NavigationItem.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\NavigationItem.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\NavigationItem.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Models\\NavigationItem.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\NavigationItem.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\NavigationItem.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Models\\NavigationItem.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -225,11 +250,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "IUserContext.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IUserContext.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IUserContext.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Interfaces\\IUserContext.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IUserContext.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IUserContext.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Interfaces\\IUserContext.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -237,11 +262,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "PageService.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\PageService.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\PageService.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Services\\PageService.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\PageService.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Services\\PageService.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Services\\PageService.cs",
               "ViewState": "AgIAABYAAAAAAAAAAAAmwBgAAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -251,9 +276,9 @@
               "$type": "Document",
               "DocumentIndex": 15,
               "Title": "IPageService.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IPageService.cs",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IPageService.cs",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Interfaces\\IPageService.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IPageService.cs",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Interfaces\\IPageService.cs",
               "RelativeToolTip": "Flex.Csv2Cfx\\Interfaces\\IPageService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAqwA4AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -261,26 +286,15 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
-              "Title": "User.cs",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\User.cs",
-              "RelativeDocumentMoniker": "Flex.Csv2Cfx\\Models\\User.cs",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\Models\\User.cs",
-              "RelativeToolTip": "Flex.Csv2Cfx\\Models\\User.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAQwAkAAAAVAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-09-28T14:24:21.704Z"
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 16,
               "Title": "App.xaml",
-              "DocumentMoniker": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml",
+              "DocumentMoniker": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml",
               "RelativeDocumentMoniker": "Flex.Csv2Cfx\\App.xaml",
-              "ToolTip": "C:\\github\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml",
+              "ToolTip": "C:\\github\\CSV2CFX\\Flex.Csv2Cfx\\Flex.Csv2Cfx\\App.xaml",
               "RelativeToolTip": "Flex.Csv2Cfx\\App.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-09-28T14:09:38.207Z"
+              "WhenOpened": "2025-09-28T14:09:38.207Z",
+              "EditorCaption": ""
             }
           ]
         }

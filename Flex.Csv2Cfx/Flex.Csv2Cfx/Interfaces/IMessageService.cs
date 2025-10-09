@@ -16,7 +16,7 @@ namespace Flex.Csv2Cfx.Interfaces
         Task<bool> ConnectAsync();
         Task<PublishResult> PublishAmqpMessageAsync(string exchange, string routingKey, string message);
         Task<PublishResult> PublishMqttMessageAsync(string topic, string message);
-        Task<PublishResult> PublishBothAsync(string amqpRoutingKey, string mqttTopic, string message);
+        Task<PublishResult> PublishBothAsync(string topic, string message);
         Task<List<Message>> GetRecentSentMessagesAsync(int count = 50);
         void Disconnect();
     }

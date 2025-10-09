@@ -20,6 +20,7 @@ namespace Flex.Csv2Cfx.Services
         private readonly MqttClientFactory _mqttFactory;
         // private readonly AppSettings _settings;
         private bool _disposed = false;
+        private const string exchangeName = "amq.topic";
         private readonly List<Message> _sentMessages = new();
         public bool IsConnected => (_amqpConnection?.IsOpen ?? false) || (_mqttClient?.IsConnected ?? false);
 
@@ -50,13 +51,6 @@ namespace Flex.Csv2Cfx.Services
                 _amqpConnection = await _amqpFactory.CreateConnectionAsync();
                 _amqpChannel = await _amqpConnection.CreateChannelAsync();
 
-                // 声明交换机
-                await _amqpChannel.ExchangeDeclareAsync(
-                    exchange: "wpf.system.exchange",
-                    type: ExchangeType.Topic,
-                    durable: true,
-                    autoDelete: false);
-
                 // 连接MQTT
                 var mqttOptions = new MqttClientOptionsBuilder()
                     .WithTcpServer("localhost", 1883)
@@ -85,7 +79,7 @@ namespace Flex.Csv2Cfx.Services
             }
         }
 
-        public async Task<PublishResult> PublishAmqpMessageAsync(string exchange, string routingKey, string message)
+        public async Task<PublishResult> PublishAmqpMessageAsync(string routingKey, string message)
         {
             try
             {
@@ -103,7 +97,7 @@ namespace Flex.Csv2Cfx.Services
                 };
 
                 await _amqpChannel.BasicPublishAsync(
-                    exchange: exchange,
+                    exchange: exchangeName,
                     routingKey: routingKey,
                     mandatory: false,
                     basicProperties: properties,
@@ -183,13 +177,17 @@ namespace Flex.Csv2Cfx.Services
             }
         }
 
-        public async Task<PublishResult> PublishBothAsync(string amqpRoutingKey, string mqttTopic, string message)
+        public async Task<PublishResult> PublishBothAsync(string topic, string message)
         {
             var results = new List<PublishResult>();
 
-            // 发布AMQP消息
-            var amqpResult = await PublishAmqpMessageAsync("wpf.system.exchange", amqpRoutingKey, message);
+            // AMQP，发布到 amq.topic 交换机，routing key 使用 topic
+            var amqpResult = await PublishAmqpMessageAsync(topic, message);
             results.Add(amqpResult);
+
+            // MQTT，topic 使用相同值
+            var mqttResult = await PublishMqttMessageAsync(topic, message);
+            results.Add(mqttResult);
 
             var successCount = results.Count(r => r.Success);
             var messageText = successCount == 2 ? "两条消息都发布成功" : successCount == 1 ? "一条消息发布成功" : "两条消息都发布失败";

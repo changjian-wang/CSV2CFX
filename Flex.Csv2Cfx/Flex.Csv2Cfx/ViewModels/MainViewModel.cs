@@ -26,7 +26,7 @@ namespace Flex.Csv2Cfx.ViewModels
             set => SetProperty(ref _sentMessages, value);
         }
 
-        public User CurrentUser => _authService.CurrentUser;
+        public User CurrentUser => _authService.CurrentUser ?? new User();
 
         public string ConnectionStatus
         {
