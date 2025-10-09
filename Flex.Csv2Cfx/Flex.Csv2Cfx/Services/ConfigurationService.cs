@@ -92,6 +92,7 @@ namespace Flex.Csv2Cfx.Services
 
             // 重新启用文件监视
             await Task.Delay(1000);
+
             if (_fileWatcher != null)
             {
                 _fileWatcher.EnableRaisingEvents = true;

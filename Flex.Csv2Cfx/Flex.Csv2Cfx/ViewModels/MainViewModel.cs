@@ -13,8 +13,7 @@ namespace Flex.Csv2Cfx.ViewModels
         private readonly IMessageService _messageService;
         private string _connectionStatus = "未连接";
         private ObservableCollection<Message> _sentMessages = new();
-        private string _amqpTopic = "wpf.system.message";
-        private string _mqttTopic = "wpf/system/message";
+        private string topic = "system/topic";
         private string _messageContent = "测试消息内容：Hello, World!";
         private int _successCount = 0;
         private int _failCount = 0;
@@ -34,16 +33,10 @@ namespace Flex.Csv2Cfx.ViewModels
             set => SetProperty(ref _connectionStatus, value);
         }
 
-        public string AmqpTopic
+        public string Topic
         {
-            get => _amqpTopic;
-            set => SetProperty(ref _amqpTopic, value);
-        }
-
-        public string MqttTopic
-        {
-            get => _mqttTopic;
-            set => SetProperty(ref _mqttTopic, value);
+            get => topic;
+            set => SetProperty(ref topic, value);
         }
 
         public string MessageContent
@@ -151,8 +144,7 @@ namespace Flex.Csv2Cfx.ViewModels
                 return;
 
             var result = await _messageService.PublishAmqpMessageAsync(
-                "wpf.system.exchange",
-                AmqpTopic,
+                Topic,
                 MessageContent);
 
             if (result.Success)
@@ -176,7 +168,7 @@ namespace Flex.Csv2Cfx.ViewModels
                 return;
 
             var result = await _messageService.PublishMqttMessageAsync(
-                MqttTopic,
+                Topic,
                 MessageContent);
 
             if (result.Success)
@@ -200,8 +192,7 @@ namespace Flex.Csv2Cfx.ViewModels
                 return;
 
             var result = await _messageService.PublishBothAsync(
-                AmqpTopic,
-                MqttTopic,
+                Topic,
                 MessageContent);
 
             if (result.Success)

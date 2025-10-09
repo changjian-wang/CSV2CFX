@@ -6,6 +6,7 @@ using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -16,24 +17,28 @@ namespace Flex.Csv2Cfx.Services
         private IConnection? _amqpConnection;
         private IChannel? _amqpChannel;
         private IMqttClient? _mqttClient;
+        private readonly IConfigurationService _configuration;
+        private readonly AppSettings _settings;
         private readonly ConnectionFactory _amqpFactory;
         private readonly MqttClientFactory _mqttFactory;
         // private readonly AppSettings _settings;
         private bool _disposed = false;
-        private const string exchangeName = "amq.topic";
+        private const string EXCHANGE_NAME = "amq.topic";
         private readonly List<Message> _sentMessages = new();
         public bool IsConnected => (_amqpConnection?.IsOpen ?? false) || (_mqttClient?.IsConnected ?? false);
 
         public IReadOnlyList<Message> SentMessages => _sentMessages.AsReadOnly();
 
-        public MessageService()
+        public MessageService(IConfigurationService configuration)
         {
+            _configuration = configuration;
+            _settings = _configuration.GetSettings();
             _amqpFactory = new ConnectionFactory()
             {
-                HostName = "localhost",
-                UserName = "guest",
-                Password = "guest",
-                VirtualHost = "/",
+                HostName = _settings.RabbitMqSettings.HostName,
+                UserName = _settings.RabbitMqSettings.Username,
+                Password = _settings.RabbitMqSettings.Password,
+                VirtualHost = _settings.RabbitMqSettings.VirtualHost,
                 // 新版本推荐设置
                 AutomaticRecoveryEnabled = true,
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
@@ -53,9 +58,9 @@ namespace Flex.Csv2Cfx.Services
 
                 // 连接MQTT
                 var mqttOptions = new MqttClientOptionsBuilder()
-                    .WithTcpServer("localhost", 1883)
-                    .WithCredentials("guest", "guest")
-                    .WithClientId($"wpf-system-{Guid.NewGuid()}")
+                    .WithTcpServer(_settings.MqttSettings.Server, _settings.MqttSettings.Port)
+                    .WithCredentials(_settings.MqttSettings.Username, _settings.MqttSettings.Password)
+                    .WithClientId($"{_settings.MqttSettings.ClientIdPrefix}-{Guid.NewGuid()}")
                     .WithCleanSession()
                     .Build();
 
@@ -97,7 +102,7 @@ namespace Flex.Csv2Cfx.Services
                 };
 
                 await _amqpChannel.BasicPublishAsync(
-                    exchange: exchangeName,
+                    exchange: EXCHANGE_NAME,
                     routingKey: routingKey,
                     mandatory: false,
                     basicProperties: properties,

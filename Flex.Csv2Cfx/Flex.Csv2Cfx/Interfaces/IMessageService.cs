@@ -14,7 +14,7 @@ namespace Flex.Csv2Cfx.Interfaces
         IReadOnlyList<Message> SentMessages { get; }
 
         Task<bool> ConnectAsync();
-        Task<PublishResult> PublishAmqpMessageAsync(string exchange, string routingKey, string message);
+        Task<PublishResult> PublishAmqpMessageAsync(string routingKey, string message);
         Task<PublishResult> PublishMqttMessageAsync(string topic, string message);
         Task<PublishResult> PublishBothAsync(string topic, string message);
         Task<List<Message>> GetRecentSentMessagesAsync(int count = 50);
