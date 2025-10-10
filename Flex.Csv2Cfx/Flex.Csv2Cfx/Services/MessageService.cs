@@ -93,6 +93,13 @@ namespace Flex.Csv2Cfx.Services
                                 queue: queueName,
                                 exchange: EXCHANGE_NAME,
                                 routingKey: topic);
+
+                            // 绑定MQTT格式的routing key（使用 .）
+                            string mqttRoutingKey = topic.Replace("/", ".");
+                            await _amqpChannel.QueueBindAsync(
+                                queue: queueName,
+                                exchange: EXCHANGE_NAME,
+                                routingKey: mqttRoutingKey);
                         }
 
                         amqpConnected = true;
