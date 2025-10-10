@@ -104,6 +104,7 @@ namespace Flex.Csv2Cfx.Services
 
                     var columns = line.Split(',');
                     if (columns.Length < 7) continue;
+                    if (columns.All(c => string.IsNullOrWhiteSpace(c))) continue;
 
                     Production production = new Production
                     {
@@ -186,6 +187,7 @@ namespace Flex.Csv2Cfx.Services
 
                     var columns = line.Split(',');
                     if (columns.Length < 4) continue;
+                    if (columns.All(c => string.IsNullOrWhiteSpace(c))) continue;
 
                     list.Add(new MachineStatus
                     {
