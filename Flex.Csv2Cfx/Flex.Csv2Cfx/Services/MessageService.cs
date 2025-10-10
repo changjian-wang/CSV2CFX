@@ -63,7 +63,8 @@ namespace Flex.Csv2Cfx.Services
                 bool mqttConnected = false;
 
                 // 连接AMQP (如果需要)
-                if (CurrentProtocol == MessageProtocol.AMQP || CurrentProtocol == MessageProtocol.Both)
+                //if (CurrentProtocol == MessageProtocol.AMQP || CurrentProtocol == MessageProtocol.Both)
+                if (CurrentProtocol == MessageProtocol.AMQP)
                 {
                     try
                     {
@@ -112,7 +113,8 @@ namespace Flex.Csv2Cfx.Services
                 }
 
                 // 连接MQTT (如果需要)
-                if (CurrentProtocol == MessageProtocol.MQTT || CurrentProtocol == MessageProtocol.Both)
+                //if (CurrentProtocol == MessageProtocol.MQTT || CurrentProtocol == MessageProtocol.Both)
+                if (CurrentProtocol == MessageProtocol.MQTT)
                 {
                     try
                     {
@@ -141,9 +143,13 @@ namespace Flex.Csv2Cfx.Services
                     }
                 }
 
+                //bool connected = (CurrentProtocol == MessageProtocol.AMQP && amqpConnected) ||
+                //               (CurrentProtocol == MessageProtocol.MQTT && mqttConnected) ||
+                //               (CurrentProtocol == MessageProtocol.Both && (amqpConnected || mqttConnected));
+
                 bool connected = (CurrentProtocol == MessageProtocol.AMQP && amqpConnected) ||
                                (CurrentProtocol == MessageProtocol.MQTT && mqttConnected) ||
-                               (CurrentProtocol == MessageProtocol.Both && (amqpConnected || mqttConnected));
+                               ((amqpConnected || mqttConnected));
 
                 if (connected)
                 {
@@ -166,7 +172,7 @@ namespace Flex.Csv2Cfx.Services
             {
                 MessageProtocol.MQTT => await PublishMqttMessageAsync(topic, message),
                 MessageProtocol.AMQP => await PublishAmqpMessageAsync(topic, message),
-                MessageProtocol.Both => await PublishBothAsync(topic, message),
+                // MessageProtocol.Both => await PublishBothAsync(topic, message),
                 _ => new PublishResult(false, "未知的协议类型")
             };
         }

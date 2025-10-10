@@ -14,13 +14,19 @@ namespace Flex.Csv2Cfx
 
         public MachineSettings MachineSettings { get; set; } = new();
 
-        public MessageProtocol PreferredProtocol { get; set; } = MessageProtocol.Both;
+        public MessageProtocol PreferredProtocol { get; set; } = MessageProtocol.MQTT;
     }
+
+    //public enum MessageProtocol
+    //{
+    //    MQTT,
+    //    AMQP,
+    //    Both
+    //}
 
     public enum MessageProtocol
     {
         MQTT,
-        AMQP,
-        Both
+        AMQP
     }
 }
