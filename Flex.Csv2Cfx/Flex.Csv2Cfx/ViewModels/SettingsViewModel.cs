@@ -1,5 +1,6 @@
 ﻿using Flex.Csv2Cfx.Interfaces;
 using Flex.Csv2Cfx.Models;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,6 +37,99 @@ namespace Flex.Csv2Cfx.ViewModels
         public string RabbitMqPassword { get; set; } = string.Empty;
         public string RabbitMqVirtualHost { get; set; } = string.Empty;
 
+        // Machine Metadata Settings
+        private string _building = string.Empty;
+        public string Building
+        {
+            get => _building;
+            set => SetProperty(ref _building, value);
+        }
+
+        private string _device = string.Empty;
+        public string Device
+        {
+            get => _device;
+            set => SetProperty(ref _device, value);
+        }
+
+        private string _areaName = string.Empty;
+        public string AreaName
+        {
+            get => _areaName;
+            set => SetProperty(ref _areaName, value);
+        }
+
+        private string _organization = string.Empty;
+        public string Organization
+        {
+            get => _organization;
+            set => SetProperty(ref _organization, value);
+        }
+
+        private string _lineName = string.Empty;
+        public string LineName
+        {
+            get => _lineName;
+            set => SetProperty(ref _lineName, value);
+        }
+
+        private string _siteName = string.Empty;
+        public string SiteName
+        {
+            get => _siteName;
+            set => SetProperty(ref _siteName, value);
+        }
+
+        private string _stationName = string.Empty;
+        public string StationName
+        {
+            get => _stationName;
+            set => SetProperty(ref _stationName, value);
+        }
+
+        private string _processType = string.Empty;
+        public string ProcessType
+        {
+            get => _processType;
+            set => SetProperty(ref _processType, value);
+        }
+
+        private string _machineName = string.Empty;
+        public string MachineName
+        {
+            get => _machineName;
+            set => SetProperty(ref _machineName, value);
+        }
+
+        private string _createdBy = string.Empty;
+        public string CreatedBy
+        {
+            get => _createdBy;
+            set => SetProperty(ref _createdBy, value);
+        }
+
+        // MachineSettingsCsv
+        private string _productionInformationFilePath = string.Empty;
+        public string ProductionInformationFilePath
+        {
+            get => _productionInformationFilePath;
+            set => SetProperty(ref _productionInformationFilePath, value);
+        }
+
+        private string _machineStatusInformationFilePath = string.Empty;
+        public string MachineStatusInformationFilePath
+        {
+            get => _machineStatusInformationFilePath;
+            set => SetProperty(ref _machineStatusInformationFilePath, value);
+        }
+
+        private string _processDataFilesFilePath = string.Empty;
+        public string ProcessDataFilesFilePath
+        {
+            get => _processDataFilesFilePath;
+            set => SetProperty(ref _processDataFilesFilePath, value);
+        }
+
         private bool _showSuccessMessage;
         public bool ShowSuccessMessage
         {
@@ -49,6 +143,9 @@ namespace Flex.Csv2Cfx.ViewModels
 
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand SelectProductionFileCommand { get; }
+        public ICommand SelectMachineStatusFileCommand { get; }
+        public ICommand SelectProcessDataFolderCommand { get; }
 
         public SettingsViewModel(IConfigurationService configurationService)
         {
@@ -56,6 +153,9 @@ namespace Flex.Csv2Cfx.ViewModels
 
             SaveCommand = new RelayCommand(ExecuteSave);
             CancelCommand = new RelayCommand(ExecuteCancel);
+            SelectProductionFileCommand = new RelayCommand(ExecuteSelectProductionFile);
+            SelectMachineStatusFileCommand = new RelayCommand(ExecuteSelectMachineStatusFile);
+            SelectProcessDataFolderCommand = new RelayCommand(ExecuteSelectProcessDataFolder);
 
             LoadSettings();
         }
@@ -76,6 +176,23 @@ namespace Flex.Csv2Cfx.ViewModels
             RabbitMqUsername = settings.RabbitMqSettings.Username;
             RabbitMqPassword = settings.RabbitMqSettings.Password;
             RabbitMqVirtualHost = settings.RabbitMqSettings.VirtualHost;
+
+            // 加载 Machine Metadata
+            Building = settings.MachineSettings.Metadata.Building ?? string.Empty;
+            Device = settings.MachineSettings.Metadata.Device ?? string.Empty;
+            AreaName = settings.MachineSettings.Metadata.AreaName ?? string.Empty;
+            Organization = settings.MachineSettings.Metadata.Organization ?? string.Empty;
+            LineName = settings.MachineSettings.Metadata.LineName ?? string.Empty;
+            SiteName = settings.MachineSettings.Metadata.SiteName ?? string.Empty;
+            StationName = settings.MachineSettings.Metadata.StationName ?? string.Empty;
+            ProcessType = settings.MachineSettings.Metadata.ProcessType ?? string.Empty;
+            MachineName = settings.MachineSettings.Metadata.MachineName ?? string.Empty;
+            CreatedBy = settings.MachineSettings.Metadata.CreatedBy ?? string.Empty;
+
+            // 加载 MachineSettingsCsv
+            ProductionInformationFilePath = settings.MachineSettings.Csv.ProductionInformationFilePath ?? string.Empty;
+            MachineStatusInformationFilePath = settings.MachineSettings.Csv.MachineStatusInformationFilePath ?? string.Empty;
+            ProcessDataFilesFilePath = settings.MachineSettings.Csv.ProcessDataFilesFilePath ?? string.Empty;
 
             // 添加协议设置加载
             SelectedProtocol = settings.PreferredProtocol;
@@ -103,7 +220,30 @@ namespace Flex.Csv2Cfx.ViewModels
                         Username = RabbitMqUsername,
                         Password = RabbitMqPassword,
                         VirtualHost = RabbitMqVirtualHost
-                    }
+                    },
+                    MachineSettings = new MachineSettings
+                    {
+                        Metadata = new MachineSettingsMetadata
+                        {
+                            Building = Building,
+                            Device = Device,
+                            AreaName = AreaName,
+                            Organization = Organization,
+                            LineName = LineName,
+                            SiteName = SiteName,
+                            StationName = StationName,
+                            ProcessType = ProcessType,
+                            MachineName = MachineName,
+                            CreatedBy = CreatedBy
+                        },
+                        Csv = new MachineSettingsCsv
+                        {
+                            ProductionInformationFilePath = ProductionInformationFilePath,
+                            MachineStatusInformationFilePath = MachineStatusInformationFilePath,
+                            ProcessDataFilesFilePath = ProcessDataFilesFilePath
+                        }
+                    },
+                    PreferredProtocol = SelectedProtocol
                 };
 
                 await _configurationService.SaveSettingsAsync(settings);
@@ -125,6 +265,50 @@ namespace Flex.Csv2Cfx.ViewModels
             if (parameter is Window window)
             {
                 window.Close();
+            }
+        }
+
+        private void ExecuteSelectProductionFile(object? obj)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "选择生产信息文件",
+                Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+                CheckFileExists = true
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                ProductionInformationFilePath = dialog.FileName;
+            }
+        }
+
+        private void ExecuteSelectMachineStatusFile(object? obj)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "选择机器状态信息文件",
+                Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+                CheckFileExists = true
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                MachineStatusInformationFilePath = dialog.FileName;
+            }
+        }
+
+        private void ExecuteSelectProcessDataFolder(object? obj)
+        {
+            var dialog = new OpenFolderDialog
+            {
+                Title = "选择过程数据文件夹",
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                ProcessDataFilesFilePath = dialog.FolderName;
             }
         }
     }

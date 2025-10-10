@@ -15,7 +15,7 @@ namespace Flex.Csv2Cfx.Services
         private readonly IConfiguration _configuration;
         private readonly string _configFilePath;
         private FileSystemWatcher? _fileWatcher;
-        
+
         public event EventHandler? ConfigurationChanged;
 
         public ConfigurationService(IConfiguration configuration)
@@ -48,8 +48,13 @@ namespace Flex.Csv2Cfx.Services
         public AppSettings GetSettings()
         {
             var settings = new AppSettings();
+
             _configuration.GetSection("MqttSettings").Bind(settings.MqttSettings);
             _configuration.GetSection("RabbitMqSettings").Bind(settings.RabbitMqSettings);
+            _configuration.GetSection("MachineSettings:Metadata").Bind(settings.MachineSettings.Metadata);
+            _configuration.GetSection("MachineSettings:Cfx").Bind(settings.MachineSettings.Cfx);
+            _configuration.GetSection("MachineSettings:Csv").Bind(settings.MachineSettings.Csv);
+
             return settings;
         }
 
@@ -72,6 +77,14 @@ namespace Flex.Csv2Cfx.Services
             // 更新 MqttSettings 和 RabbitMqSettings
             configObject["MqttSettings"] = settings.MqttSettings;
             configObject["RabbitMqSettings"] = settings.RabbitMqSettings;
+
+            // 更新 MachineSettings
+            configObject["MachineSettings"] = new
+            {
+                Metadata = settings.MachineSettings.Metadata,
+                Cfx = settings.MachineSettings.Cfx,
+                Csv = settings.MachineSettings.Csv
+            };
 
             // 写入文件
             var options = new JsonSerializerOptions

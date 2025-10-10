@@ -40,6 +40,7 @@ namespace Flex.Csv2Cfx
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<IUserContext, UserContext>();
             services.AddSingleton<IConfigurationService, ConfigurationService>();
+            services.AddSingleton<IMachineService, MachineService>();
 
             // 注册ViewModels
             services.AddTransient<LoginViewModel>();

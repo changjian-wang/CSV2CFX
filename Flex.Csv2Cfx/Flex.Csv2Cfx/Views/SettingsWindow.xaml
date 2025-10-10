@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         Title="系统配置" 
-        Height="600" 
-        Width="500"
+        Height="800" 
+        Width="900"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
 
@@ -23,74 +23,224 @@
                    Margin="0,0,0,20"/>
 
         <!-- 配置表单 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
-                <!-- MQTT 配置 -->
-                <ui:CardControl Margin="0,0,0,15" HorizontalContentAlignment="Left">
+                <!-- MQTT 和 RabbitMQ 配置 (左右布局) -->
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="15"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- MQTT 配置 -->
+                    <ui:Card Grid.Column="0" Padding="15">
+                        <StackPanel>
+                            <TextBlock Text="MQTT 配置" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold" 
+                                       Margin="0,0,0,15"/>
+
+                            <TextBlock Text="服务器地址" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding MqttServer, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: localhost"
+                                        Margin="0,0,0,10"/>
+
+                            <!--<TextBlock Text="端口" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding MqttPort, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: 1883"
+                                        Margin="0,0,0,10"/>-->
+
+                            <TextBlock Text="用户名" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding MqttUsername, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: guest"
+                                        Margin="0,0,0,10"/>
+
+                            <TextBlock Text="密码" Margin="0,0,0,5"/>
+                            <ui:PasswordBox x:Name="MqttPasswordBox"
+                                            PlaceholderText="输入密码"
+                                            PasswordChanged="MqttPasswordBox_PasswordChanged"
+                                            Margin="0,0,0,10"/>
+
+                            <TextBlock Text="客户端ID前缀" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding MqttClientIdPrefix, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: flex"/>
+                        </StackPanel>
+                    </ui:Card>
+
+                    <!-- RabbitMQ 配置 -->
+                    <ui:Card Grid.Column="2" Padding="15">
+                        <StackPanel>
+                            <TextBlock Text="RabbitMQ 配置" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold" 
+                                       Margin="0,0,0,15"/>
+
+                            <TextBlock Text="主机名" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding RabbitMqHostName, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: localhost"
+                                        Margin="0,0,0,10"/>
+
+                            <TextBlock Text="用户名" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding RabbitMqUsername, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: guest"
+                                        Margin="0,0,0,10"/>
+
+                            <TextBlock Text="密码" Margin="0,0,0,5"/>
+                            <ui:PasswordBox x:Name="RabbitMqPasswordBox"
+                                            PlaceholderText="输入密码"
+                                            PasswordChanged="RabbitMqPasswordBox_PasswordChanged"
+                                            Margin="0,0,0,10"/>
+
+                            <TextBlock Text="虚拟主机" Margin="0,0,0,5"/>
+                            <ui:TextBox Text="{Binding RabbitMqVirtualHost, UpdateSourceTrigger=PropertyChanged}"
+                                        PlaceholderText="例如: /"/>
+                        </StackPanel>
+                    </ui:Card>
+                </Grid>
+
+                <!-- Machine Metadata 配置 -->
+                <ui:Card Margin="0,0,0,15" Padding="15">
                     <StackPanel>
-                        <TextBlock Text="MQTT 配置" 
+                        <TextBlock Text="机器元数据配置" 
                                    FontSize="18" 
                                    FontWeight="SemiBold" 
                                    Margin="0,0,0,15"/>
 
-                        <TextBlock Text="服务器地址" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding MqttServer, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: localhost"
-                                    Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="15"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                        <TextBlock Text="端口" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding MqttPort, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: 1883"
-                                    Margin="0,0,0,10"/>
+                            <!-- Building -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                                <TextBlock Text="Building" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding Building, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
 
-                        <TextBlock Text="用户名" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding MqttUsername, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: guest"
-                                    Margin="0,0,0,10"/>
+                            <!-- Device -->
+                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                                <TextBlock Text="Device" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding Device, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
 
-                        <TextBlock Text="密码" Margin="0,0,0,5"/>
-                        <ui:PasswordBox x:Name="MqttPasswordBox"
-                                        PlaceholderText="输入密码"
-                                        PasswordChanged="MqttPasswordBox_PasswordChanged"
-                                        Margin="0,0,0,10"/>
+                            <!-- AreaName -->
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                                <TextBlock Text="AreaName" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding AreaName, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
 
-                        <TextBlock Text="客户端ID前缀" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding MqttClientIdPrefix, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: wpf-system"
-                                    Margin="0,0,0,0"/>
+                            <!-- Organization -->
+                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                                <TextBlock Text="Organization" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding Organization, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <!-- LineName -->
+                            <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
+                                <TextBlock Text="LineName" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding LineName, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <!-- SiteName -->
+                            <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
+                                <TextBlock Text="SiteName" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding SiteName, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <!-- StationName -->
+                            <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10">
+                                <TextBlock Text="StationName" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding StationName, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <!-- ProcessType -->
+                            <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10">
+                                <TextBlock Text="ProcessType" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding ProcessType, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <!-- MachineName -->
+                            <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,10">
+                                <TextBlock Text="MachineName" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding MachineName, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <!-- CreatedBy -->
+                            <StackPanel Grid.Row="4" Grid.Column="2">
+                                <TextBlock Text="CreatedBy" Margin="0,0,0,5"/>
+                                <ui:TextBox Text="{Binding CreatedBy, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
-                </ui:CardControl>
+                </ui:Card>
 
-                <!-- RabbitMQ 配置 -->
-                <ui:CardControl Margin="0,0,0,15" HorizontalContentAlignment="Left">
+                <!-- MachineSettingsCsv 配置 -->
+                <ui:Card Margin="0,0,0,15" Padding="15">
                     <StackPanel>
-                        <TextBlock Text="RabbitMQ 配置" 
+                        <TextBlock Text="CSV 文件路径配置" 
                                    FontSize="18" 
                                    FontWeight="SemiBold" 
                                    Margin="0,0,0,15"/>
 
-                        <TextBlock Text="主机名" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding RabbitMqHostName, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: localhost"
-                                    Margin="0,0,0,10"/>
+                        <TextBlock Text="生产信息文件路径" Margin="0,0,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:TextBox Grid.Column="0"
+                                        Text="{Binding ProductionInformationFilePath, UpdateSourceTrigger=PropertyChanged}" 
+                                        IsReadOnly="True"/>
+                            <ui:Button Grid.Column="1"
+                                       Content="浏览..."
+                                       Command="{Binding SelectProductionFileCommand}" 
+                                       Margin="10,0,0,0"
+                                       Width="80"/>
+                        </Grid>
 
-                        <TextBlock Text="用户名" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding RabbitMqUsername, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: guest"
-                                    Margin="0,0,0,10"/>
+                        <TextBlock Text="机器状态信息文件路径" Margin="0,0,0,5"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:TextBox Grid.Column="0"
+                                        Text="{Binding MachineStatusInformationFilePath, UpdateSourceTrigger=PropertyChanged}" 
+                                        IsReadOnly="True"/>
+                            <ui:Button Grid.Column="1"
+                                       Content="浏览..."
+                                       Command="{Binding SelectMachineStatusFileCommand}" 
+                                       Margin="10,0,0,0"
+                                       Width="80"/>
+                        </Grid>
 
-                        <TextBlock Text="密码" Margin="0,0,0,5"/>
-                        <ui:PasswordBox x:Name="RabbitMqPasswordBox"
-                                        PlaceholderText="输入密码"
-                                        PasswordChanged="RabbitMqPasswordBox_PasswordChanged"
-                                        Margin="0,0,0,10"/>
-
-                        <TextBlock Text="虚拟主机" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding RabbitMqVirtualHost, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="例如: /"
-                                    Margin="0,0,0,0"/>
+                        <TextBlock Text="过程数据文件夹路径" Margin="0,0,0,5"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:TextBox Grid.Column="0"
+                                        Text="{Binding ProcessDataFilesFilePath, UpdateSourceTrigger=PropertyChanged}" 
+                                        IsReadOnly="True"/>
+                            <ui:Button Grid.Column="1"
+                                       Content="浏览..."
+                                       Command="{Binding SelectProcessDataFolderCommand}" 
+                                       Margin="10,0,0,0"
+                                       Width="80"/>
+                        </Grid>
                     </StackPanel>
-                </ui:CardControl>
+                </ui:Card>
 
                 <!-- 状态信息 -->
                 <Border Background="#E8F5E9" 

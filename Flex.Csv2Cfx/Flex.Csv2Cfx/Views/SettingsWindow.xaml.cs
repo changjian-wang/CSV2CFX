@@ -1,18 +1,8 @@
 ﻿using Flex.Csv2Cfx.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using Wpf.Ui.Controls;
+using PasswordBox = Wpf.Ui.Controls.PasswordBox;
 
 namespace Flex.Csv2Cfx.Views
 {
@@ -34,19 +24,19 @@ namespace Flex.Csv2Cfx.Views
             };
         }
 
-        private void MqttPasswordBox_PasswordChanged(object sender, System.Windows.RoutedEventArgs e)
+        private void MqttPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
             if (DataContext is SettingsViewModel viewModel)
             {
-                viewModel.MqttPassword = ((Wpf.Ui.Controls.PasswordBox)sender).Password;
+                viewModel.MqttPassword = ((PasswordBox)sender).Password;
             }
         }
 
-        private void RabbitMqPasswordBox_PasswordChanged(object sender, System.Windows.RoutedEventArgs e)
+        private void RabbitMqPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
             if (DataContext is SettingsViewModel viewModel)
             {
-                viewModel.RabbitMqPassword = ((Wpf.Ui.Controls.PasswordBox)sender).Password;
+                viewModel.RabbitMqPassword = ((PasswordBox)sender).Password;
             }
         }
     }

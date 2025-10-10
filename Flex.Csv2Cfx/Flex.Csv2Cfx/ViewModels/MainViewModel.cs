@@ -272,5 +272,10 @@ namespace Flex.Csv2Cfx.ViewModels
             FailCount = 0;
             OnPropertyChanged(nameof(StatsText));
         }
+
+        private async Task StartServiceAsync()
+        {
+            
+        }
     }
 }

@@ -12,6 +12,8 @@ namespace Flex.Csv2Cfx
 
         public RabbitMqSettings RabbitMqSettings { get; set; } = new();
 
+        public MachineSettings MachineSettings { get; set; } = new();
+
         public MessageProtocol PreferredProtocol { get; set; } = MessageProtocol.Both;
     }
 

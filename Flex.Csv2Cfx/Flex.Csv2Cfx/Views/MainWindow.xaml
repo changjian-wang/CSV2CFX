@@ -4,240 +4,326 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:models="clr-namespace:Flex.Csv2Cfx.Models"
         Title="WPF消息发布系统" 
-        Height="700" 
-        Width="1200"
+        Height="750" 
+        Width="1400"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize">
+        ResizeMode="CanResize">
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="280"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="420"/>
         </Grid.ColumnDefinitions>
 
         <!-- 左侧导航栏 -->
-        <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}">
-            <StackPanel>
-                <!-- 用户信息 -->
-                <ui:CardControl Margin="10" Padding="15" HorizontalContentAlignment="Right">
-                    <StackPanel>
-                        <ui:SymbolIcon Symbol="Person24" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+        <Border Grid.Column="0" 
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                BorderThickness="0,0,1,0"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+            <StackPanel Margin="15">
+                <!-- 用户信息卡片 -->
+                <ui:Card Margin="0,0,0,15" Padding="20">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="60" Height="60" 
+                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                CornerRadius="30"
+                                Margin="0,0,0,12">
+                            <ui:SymbolIcon Symbol="Person24" 
+                                          FontSize="32"
+                                          Foreground="White"/>
+                        </Border>
                         <TextBlock Text="{Binding CurrentUser.Data.UserName}" 
                                   FontWeight="SemiBold" 
-                                  Margin="0,10,0,5"/>
-                        <TextBlock Text="{Binding CurrentUser.Data.UserName}" 
-                                  FontSize="11" 
+                                  FontSize="16"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding CurrentUser.Data.Role}" 
+                                  FontSize="12" 
+                                  HorizontalAlignment="Center"
                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     </StackPanel>
-                </ui:CardControl>
+                </ui:Card>
 
-                <!-- 状态信息 -->
-                <ui:CardControl HorizontalContentAlignment="Left" Margin="10" Padding="15">
+                <!-- 连接状态卡片 -->
+                <ui:Card Margin="0,0,0,15" Padding="15">
                     <StackPanel>
                         <TextBlock Text="连接状态" 
-                                  FontSize="12" 
-                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Text="{Binding ConnectionStatus}" 
-                                  FontWeight="SemiBold">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding ConnectionStatus}" Value="已连接">
-                                            <Setter Property="Foreground" Value="Green"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionStatus}" Value="连接中">
-                                            <Setter Property="Foreground" Value="Orange"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionStatus}" Value="连接失败">
-                                            <Setter Property="Foreground" Value="Red"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionStatus}" Value="未连接">
-                                            <Setter Property="Foreground" Value="Gray"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                                  FontSize="13" 
+                                  FontWeight="SemiBold"
+                                  Margin="0,0,0,10"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="Gray"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="已连接">
+                                                <Setter Property="Fill" Value="#4CAF50"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="连接中">
+                                                <Setter Property="Fill" Value="#FF9800"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="连接失败">
+                                                <Setter Property="Fill" Value="#F44336"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding ConnectionStatus}" FontWeight="Medium"/>
+                        </StackPanel>
+
+                        <Separator Margin="0,8,0,8"/>
 
                         <TextBlock Text="{Binding StatsText}" 
-                                  FontSize="11" 
-                                  Margin="0,10,0,0"
+                                  FontSize="12" 
                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                     </StackPanel>
-                </ui:CardControl>
+                </ui:Card>
+
+                <!-- 协议选择 -->
+                <ui:Card Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="消息协议" 
+                                  FontSize="13" 
+                                  FontWeight="SemiBold"
+                                  Margin="0,0,0,10"/>
+                        <ComboBox ItemsSource="{Binding AvailableProtocols}"
+                                 SelectedItem="{Binding SelectedProtocol}"
+                                 HorizontalAlignment="Stretch"/>
+                        <TextBlock Text="{Binding ProtocolDisplayText}" 
+                                  FontSize="11"
+                                  Margin="0,8,0,0"
+                                  Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+                    </StackPanel>
+                </ui:Card>
 
                 <!-- 操作按钮 -->
-                <StackPanel Margin="10">
+                <StackPanel>
                     <ui:Button Content="重新连接" 
-                           Command="{Binding ReconnectCommand}"
-                           Appearance="Secondary"
-                           Margin="0,0,0,10"/>
+                              Icon="{ui:SymbolIcon ArrowSync24}"
+                              Command="{Binding ReconnectCommand}"
+                              Appearance="Secondary"
+                              HorizontalAlignment="Stretch"
+                              Margin="0,0,0,10"/>
                     <ui:Button Content="清空消息" 
-                           Command="{Binding ClearMessagesCommand}"
-                           Appearance="Danger"
-                           Margin="0,0,0,10"/>
+                              Icon="{ui:SymbolIcon Delete24}"
+                              Command="{Binding ClearMessagesCommand}"
+                              Appearance="Danger"
+                              HorizontalAlignment="Stretch"
+                              Margin="0,0,0,10"/>
                     <ui:Button Content="系统配置" 
-                       Command="{Binding OpenSettingsCommand}"
-                       Appearance="Secondary"/>
+                              Icon="{ui:SymbolIcon Settings24}"
+                              Command="{Binding OpenSettingsCommand}"
+                              Appearance="Secondary"
+                              HorizontalAlignment="Stretch"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <!-- 中间消息发布区域 -->
-        <Grid Grid.Column="1" Margin="10">
+        <Grid Grid.Column="1" Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <!-- 发布面板 -->
-            <ui:CardControl Grid.Row="0" Margin="0,0,0,10" HorizontalContentAlignment="Center">
-                <StackPanel HorizontalAlignment="Left">
-                    <TextBlock Text="消息协议:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Name="ProtocolComboBox" 
-                      ItemsSource="{Binding AvailableProtocols}"
-                      SelectedItem="{Binding SelectedProtocol}"
-                      Width="120" Margin="0,0,10,0"/>
-                            <TextBlock Text="{Binding ProtocolDisplayText}" 
-                       VerticalAlignment="Center" 
-                       Foreground="Blue"/>
-                    <TextBlock Text="消息发布" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+            <ui:Card Grid.Row="0" Margin="0,0,0,20" Padding="25">
+                <StackPanel>
+                    <TextBlock Text="消息发布" 
+                              FontSize="20" 
+                              FontWeight="SemiBold" 
+                              Margin="0,0,0,20"/>
 
-                    <!-- 主题设置 -->
-                    <Grid Margin="0,0,0,15">
+                    <!-- 消息内容 -->
+                    <TextBlock Text="消息内容" 
+                              FontSize="13" 
+                              FontWeight="Medium"
+                              Margin="0,0,0,8"/>
+                    <ui:TextBox Text="{Binding MessageContent, UpdateSourceTrigger=PropertyChanged}" 
+                               AcceptsReturn="True" 
+                               TextWrapping="Wrap"
+                               MinHeight="120"
+                               MaxHeight="200"
+                               PlaceholderText="请输入要发送的消息内容..."
+                               Margin="0,0,0,20"/>
+
+                    <!-- 发布按钮组 -->
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
+
+                        <ui:Button Grid.Column="0"
+                                  Content="发布 AMQP" 
+                                  Icon="{ui:SymbolIcon Send24}"
+                                  Command="{Binding SendAmqpCommand}"
+                                  Appearance="Primary"
+                                  HorizontalAlignment="Stretch"/>
+
+                        <ui:Button Grid.Column="2"
+                                  Content="发布 MQTT" 
+                                  Icon="{ui:SymbolIcon Send24}"
+                                  Command="{Binding SendMqttCommand}"
+                                  Appearance="Primary"
+                                  HorizontalAlignment="Stretch"/>
+
+                        <ui:Button Grid.Column="4"
+                                  Content="同时发布" 
+                                  Icon="{ui:SymbolIcon SendCopy24}"
+                                  Command="{Binding SendBothCommand}"
+                                  Appearance="Success"
+                                  HorizontalAlignment="Stretch"/>
                     </Grid>
-
-                    <!-- 消息内容 -->
-                    <StackPanel Margin="0,0,0,15">
-                        <TextBlock Text="消息内容" FontSize="12" Margin="0,0,0,5"/>
-                        <ui:TextBox Text="{Binding MessageContent}" 
-                                AcceptsReturn="True" 
-                                TextWrapping="Wrap"
-                                Height="80"
-                                PlaceholderText="请输入要发送的消息内容..."/>
-                    </StackPanel>
-
-                    <!-- 发布按钮 -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <ui:Button Content="发布AMQP" 
-                               Command="{Binding SendAmqpCommand}"
-                               Appearance="Primary"
-                               Margin="0,0,10,0"/>
-                        <ui:Button Content="发布MQTT" 
-                               Command="{Binding SendMqttCommand}"
-                               Appearance="Primary"
-                               Margin="0,0,10,0"/>
-                        <ui:Button Content="同时发布" 
-                               Command="{Binding SendBothCommand}"
-                               Appearance="Success"/>
-                        <ui:Button Content="发送消息" 
-                           Command="{Binding SendMessageCommand}"
-                           Appearance="Success"/>
-                    </StackPanel>
                 </StackPanel>
-            </ui:CardControl>
+            </ui:Card>
 
-            <!-- 空白区域 -->
-            <Border Grid.Row="1" Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="5">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <ui:SymbolIcon Symbol="Mail24" Width="64" Height="64" 
-                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                    <TextBlock Text="WPF消息发布系统" 
-                              FontSize="18" 
+            <!-- 欢迎区域 -->
+            <Border Grid.Row="1" 
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                <StackPanel HorizontalAlignment="Center" 
+                           VerticalAlignment="Center">
+                    <Border Width="80" Height="80"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                            CornerRadius="40"
+                            Margin="0,0,0,20">
+                        <ui:SymbolIcon Symbol="Mail24" 
+                                      FontSize="40"
+                                      Foreground="White"/>
+                    </Border>
+                    <TextBlock Text="WPF 消息发布系统" 
+                              FontSize="24" 
                               FontWeight="SemiBold"
-                              Margin="0,20,0,10"/>
+                              HorizontalAlignment="Center"
+                              Margin="0,0,0,12"/>
                     <TextBlock Text="基于 RabbitMQ.Client 7.1.2 和 MQTTnet 5.0.1"
-                              FontSize="11"
-                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                              TextAlignment="Center"/>
+                              FontSize="13"
+                              HorizontalAlignment="Center"
+                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
             </Border>
         </Grid>
 
         <!-- 右侧消息历史 -->
-        <Border Grid.Column="2" BorderThickness="1,0,0,0" 
+        <Border Grid.Column="2" 
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                BorderThickness="1,0,0,0" 
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-            <Grid>
+            <Grid Margin="15">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- 标题 -->
-                <Border Grid.Row="0" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                        Padding="15,10" BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                        Margin="0, 12, 10, 0"
-                        CornerRadius="3">
-                    <TextBlock Text="已发送消息" FontWeight="SemiBold" FontSize="14" />
-                </Border>
+                <StackPanel Grid.Row="0" Margin="0,0,0,15">
+                    <TextBlock Text="已发送消息" 
+                              FontWeight="SemiBold" 
+                              FontSize="18"/>
+                    <TextBlock Text="{Binding SentMessages.Count, StringFormat='共 {0} 条消息'}" 
+                              FontSize="12"
+                              Margin="0,4,0,0"
+                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
 
                 <!-- 消息列表 -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="1" 
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl ItemsSource="{Binding SentMessages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type models:Message}">
-                                <ui:CardControl Margin="0, 2, 10, 0" Padding="10" CornerRadius="3">
+                                <ui:Card Margin="0,0,0,10" Padding="12">
                                     <StackPanel>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock FontWeight="SemiBold">
-                                                <TextBlock.Text>
-                                                    <Binding Path="Protocol"/>
-                                                </TextBlock.Text>
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
+                                        <!-- 消息头部 -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0"
+                                                   CornerRadius="3"
+                                                   Padding="6,2"
+                                                   Margin="0,0,8,0">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="Gray"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Protocol}" Value="AMQP">
-                                                                <Setter Property="Foreground" Value="Blue"/>
+                                                                <Setter Property="Background" Value="#2196F3"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Protocol}" Value="MQTT">
-                                                                <Setter Property="Foreground" Value="Green"/>
+                                                                <Setter Property="Background" Value="#4CAF50"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Protocol}" Value="SYSTEM">
-                                                                <Setter Property="Foreground" Value="Gray"/>
+                                                                <Setter Property="Background" Value="#9E9E9E"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Topic}" 
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding Protocol}" 
+                                                          FontSize="11"
+                                                          FontWeight="SemiBold"
+                                                          Foreground="White"/>
+                                            </Border>
+
+                                            <TextBlock Grid.Column="1"
+                                                      Text="{Binding Topic}" 
+                                                      FontSize="11"
+                                                      FontWeight="Medium"
+                                                      VerticalAlignment="Center"
+                                                      TextTrimming="CharacterEllipsis"/>
+
+                                            <TextBlock Grid.Column="2"
+                                                      Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" 
                                                       FontSize="10"
                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                      Margin="10,0,0,0"/>
-                                            <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss'}" 
-                                                      FontSize="9"
-                                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                      Margin="10,0,0,0"/>
-                                        </StackPanel>
+                                                      VerticalAlignment="Center"/>
+                                        </Grid>
+
+                                        <!-- 消息内容 -->
                                         <TextBlock Text="{Binding Content}" 
-                                                  FontSize="11"
+                                                  FontSize="12"
                                                   TextWrapping="Wrap"
-                                                  Margin="0,5,0,0"/>
-                                        <TextBlock Margin="0,5,0,0" FontSize="10">
+                                                  Margin="0,0,0,8"
+                                                  MaxHeight="60"
+                                                  TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- 状态 -->
+                                        <TextBlock FontSize="11">
                                             <TextBlock.Text>
                                                 <Binding Path="Status"/>
                                             </TextBlock.Text>
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Status}" Value="成功">
-                                                            <Setter Property="Foreground" Value="Green"/>
+                                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                                            <Setter Property="Text" Value="✓ 发送成功"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="失败">
-                                                            <Setter Property="Foreground" Value="Red"/>
+                                                            <Setter Property="Foreground" Value="#F44336"/>
+                                                            <Setter Property="Text" Value="✗ 发送失败"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </StackPanel>
-                                </ui:CardControl>
+                                </ui:Card>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
