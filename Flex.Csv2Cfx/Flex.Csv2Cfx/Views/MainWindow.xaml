@@ -111,14 +111,6 @@
                             <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="AMQP路由键" FontSize="12" Margin="0,0,0,5"/>
-                            <ui:TextBox Text="{Binding AmqpTopic}" PlaceholderText="例如: wpf.test.message"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="MQTT主题" FontSize="12" Margin="0,0,0,5"/>
-                            <ui:TextBox Text="{Binding MqttTopic}" PlaceholderText="例如: wpf/system/message"/>
-                        </StackPanel>
                     </Grid>
 
                     <!-- 消息内容 -->

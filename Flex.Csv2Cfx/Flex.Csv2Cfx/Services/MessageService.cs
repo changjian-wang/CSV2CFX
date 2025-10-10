@@ -73,9 +73,9 @@ namespace Flex.Csv2Cfx.Services
                         // 声明统一的队列并绑定
                         List<string> topics = new List<string>
                         {
-                            "system/heartbeat",
-                            "system/works",
-                            "system/states"
+                            "flex/heartbeat",
+                            "flex/works",
+                            "flex/states"
                         };
 
                         // 创建统一的队列名称，确保MQTT和AMQP使用相同的队列概念
@@ -232,7 +232,7 @@ namespace Flex.Csv2Cfx.Services
                     .WithRetainFlag(false)
                     .Build();
 
-                await _mqttClient.PublishAsync(applicationMessage, CancellationToken.None);
+                MqttClientPublishResult result = await _mqttClient.PublishAsync(applicationMessage, CancellationToken.None);
 
                 var sentMessage = new Message
                 {
@@ -240,7 +240,7 @@ namespace Flex.Csv2Cfx.Services
                     Topic = topic,
                     Content = message,
                     Timestamp = DateTime.Now,
-                    Status = "成功"
+                    Status = result.IsSuccess ? "成功" : $"失败: {result.ReasonString}"
                 };
 
                 _sentMessages.Insert(0, sentMessage);
