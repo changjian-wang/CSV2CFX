@@ -11,6 +11,7 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -20,10 +21,29 @@
                    Text="系统配置" 
                    FontSize="24" 
                    FontWeight="Bold" 
-                   Margin="0,0,0,20"/>
+                   Margin="0,0,0,15"/>
+
+        <!-- 成功消息提示 -->
+        <Border Grid.Row="1"
+                Background="#E8F5E9" 
+                BorderBrush="#4CAF50" 
+                BorderThickness="1" 
+                CornerRadius="4"
+                Padding="10"
+                Margin="0,0,0,20"
+                Visibility="{Binding ShowSuccessMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal">
+                <ui:SymbolIcon Symbol="Checkmark24" 
+                               Foreground="#4CAF50" 
+                               Margin="0,0,10,0"/>
+                <TextBlock Text="配置已成功保存！" 
+                           Foreground="#2E7D32"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
 
         <!-- 配置表单 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
                 <!-- MQTT 和 RabbitMQ 配置 (左右布局) -->
                 <Grid Margin="0,0,0,15">
@@ -46,10 +66,10 @@
                                         PlaceholderText="例如: localhost"
                                         Margin="0,0,0,10"/>
 
-                            <!--<TextBlock Text="端口" Margin="0,0,0,5"/>
+                            <TextBlock Text="端口" Margin="0,0,0,5"/>
                             <ui:TextBox Text="{Binding MqttPort, UpdateSourceTrigger=PropertyChanged}"
                                         PlaceholderText="例如: 1883"
-                                        Margin="0,0,0,10"/>-->
+                                        Margin="0,0,0,10"/>
 
                             <TextBlock Text="用户名" Margin="0,0,0,5"/>
                             <ui:TextBox Text="{Binding MqttUsername, UpdateSourceTrigger=PropertyChanged}"
@@ -241,29 +261,11 @@
                         </Grid>
                     </StackPanel>
                 </ui:Card>
-
-                <!-- 状态信息 -->
-                <Border Background="#E8F5E9" 
-                        BorderBrush="#4CAF50" 
-                        BorderThickness="1" 
-                        CornerRadius="4"
-                        Padding="10"
-                        Margin="0,0,0,15"
-                        Visibility="{Binding ShowSuccessMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="Checkmark24" 
-                                       Foreground="#4CAF50" 
-                                       Margin="0,0,10,0"/>
-                        <TextBlock Text="配置已成功保存！" 
-                                   Foreground="#2E7D32"
-                                   VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
             </StackPanel>
         </ScrollViewer>
 
         <!-- 操作按钮 -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <ui:Button Content="保存配置" 
                        Command="{Binding SaveCommand}"
                        Appearance="Primary"

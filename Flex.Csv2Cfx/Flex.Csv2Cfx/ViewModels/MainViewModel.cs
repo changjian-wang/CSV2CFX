@@ -471,16 +471,12 @@ namespace Flex.Csv2Cfx.ViewModels
         {
             if (IsServiceRunning)
             {
-                var result = MessageBox.Show(
-                    "服务正在运行中。\n修改配置需要停止服务。\n是否继续？",
+                MessageBox.Show(
+                    "服务正在运行中，无法打开配置。\n请先停止服务，然后再打开配置。",
                     "提示",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.No)
-                {
-                    return;
-                }
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
             }
 
             var settingsWindow = App.GetService<Views.SettingsWindow>();
