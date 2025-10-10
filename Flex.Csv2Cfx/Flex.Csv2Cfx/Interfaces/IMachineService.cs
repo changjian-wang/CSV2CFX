@@ -8,5 +8,10 @@ namespace Flex.Csv2Cfx.Interfaces
 {
     public interface IMachineService
     {
+        Dictionary<string, dynamic?> GetHeartbeat();
+
+        Task<List<Dictionary<string, dynamic?>>> GetWorkProcessesAsync();
+
+        Task<List<Dictionary<string, dynamic?>>> GetMachineStateAsync();
     }
 }
