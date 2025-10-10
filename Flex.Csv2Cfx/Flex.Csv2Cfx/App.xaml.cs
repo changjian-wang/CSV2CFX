@@ -5,6 +5,7 @@ using Flex.Csv2Cfx.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using MQTTnet.Adapter;
 using MQTTnet.Implementations;
 using System.Configuration;
@@ -25,6 +26,13 @@ namespace Flex.Csv2Cfx
             {
                 // 配置应用程序设置
                 config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true).AddEnvironmentVariables();
+            })
+            .ConfigureLogging((context, logging) =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole();
+                logging.AddDebug();
+                logging.SetMinimumLevel(LogLevel.Debug);
             })
             .ConfigureServices(ConfigureServices)
             .Build();
@@ -86,10 +94,15 @@ namespace Flex.Csv2Cfx
 
         protected override async void OnExit(ExitEventArgs e)
         {
+            // 清理资源
             using (var scope = Host.Services.CreateScope())
             {
-                var messageService = scope.ServiceProvider.GetRequiredService<IMessageService>();
-                messageService.Dispose();
+                var messageService = scope.ServiceProvider.GetService<IMessageService>();
+                messageService?.Dispose();
+
+                // 清理 MainViewModel
+                var mainViewModel = scope.ServiceProvider.GetService<MainViewModel>();
+                mainViewModel?.Cleanup();
             }
 
             await Host.StopAsync();

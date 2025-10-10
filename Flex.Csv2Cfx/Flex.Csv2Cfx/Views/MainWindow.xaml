@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:models="clr-namespace:Flex.Csv2Cfx.Models"
-        Title="WPF消息发布系统" 
+        Title="CFX 消息服务系统" 
         Height="750" 
         Width="1400"
         WindowStartupLocation="CenterScreen"
@@ -77,6 +77,24 @@
 
                         <Separator Margin="0,8,0,8"/>
 
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="Gray"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                                <Setter Property="Fill" Value="#4CAF50"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding ServiceStatusText}" FontWeight="Medium"/>
+                        </StackPanel>
+
+                        <Separator Margin="0,8,0,8"/>
+
                         <TextBlock Text="{Binding StatsText}" 
                                   FontSize="12" 
                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
@@ -90,30 +108,57 @@
                                   FontSize="13" 
                                   FontWeight="SemiBold"
                                   Margin="0,0,0,10"/>
-                        <ComboBox ItemsSource="{Binding AvailableProtocols}"
-                                 SelectedItem="{Binding SelectedProtocol}"
-                                 HorizontalAlignment="Stretch"/>
+                        <ComboBox x:Name="ProtocolComboBox"
+                                  ItemsSource="{Binding AvailableProtocols}"
+                                  SelectedItem="{Binding SelectedProtocol, Mode=OneWay}"
+                                  SelectionChanged="ProtocolComboBox_SelectionChanged"
+                                  HorizontalAlignment="Stretch"/>
                         <TextBlock Text="{Binding ProtocolDisplayText}" 
                                   FontSize="11"
                                   Margin="0,8,0,0"
                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="提示：切换协议前请先停止服务" 
+                                  FontSize="10"
+                                  Margin="0,4,0,0"
+                                  TextWrapping="Wrap"
+                                  Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                     </StackPanel>
                 </ui:Card>
 
                 <!-- 操作按钮 -->
                 <StackPanel>
+                    <ui:Button Content="{Binding StartButtonText}" 
+                              Icon="{ui:SymbolIcon Play24}"
+                              Command="{Binding ToggleServiceCommand}"
+                              HorizontalAlignment="Stretch"
+                              Margin="0,0,0,10">
+                        <ui:Button.Style>
+                            <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                <Setter Property="Appearance" Value="Success"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                        <Setter Property="Appearance" Value="Danger"/>
+                                        <Setter Property="Icon" Value="{ui:SymbolIcon Stop24}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ui:Button.Style>
+                    </ui:Button>
+
                     <ui:Button Content="重新连接" 
                               Icon="{ui:SymbolIcon ArrowSync24}"
                               Command="{Binding ReconnectCommand}"
                               Appearance="Secondary"
                               HorizontalAlignment="Stretch"
                               Margin="0,0,0,10"/>
+
                     <ui:Button Content="清空消息" 
                               Icon="{ui:SymbolIcon Delete24}"
                               Command="{Binding ClearMessagesCommand}"
                               Appearance="Danger"
                               HorizontalAlignment="Stretch"
                               Margin="0,0,0,10"/>
+
                     <ui:Button Content="系统配置" 
                               Icon="{ui:SymbolIcon Settings24}"
                               Command="{Binding OpenSettingsCommand}"
@@ -123,93 +168,79 @@
             </StackPanel>
         </Border>
 
-        <!-- 中间消息发布区域 -->
+        <!-- 中间服务状态区域 -->
         <Grid Grid.Column="1" Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <!-- 发布面板 -->
-            <ui:Card Grid.Row="0" Margin="0,0,0,20" Padding="25">
-                <StackPanel>
-                    <TextBlock Text="消息发布" 
-                              FontSize="20" 
-                              FontWeight="SemiBold" 
-                              Margin="0,0,0,20"/>
-
-                    <!-- 消息内容 -->
-                    <TextBlock Text="消息内容" 
-                              FontSize="13" 
-                              FontWeight="Medium"
-                              Margin="0,0,0,8"/>
-                    <ui:TextBox Text="{Binding MessageContent, UpdateSourceTrigger=PropertyChanged}" 
-                               AcceptsReturn="True" 
-                               TextWrapping="Wrap"
-                               MinHeight="120"
-                               MaxHeight="200"
-                               PlaceholderText="请输入要发送的消息内容..."
-                               Margin="0,0,0,20"/>
-
-                    <!-- 发布按钮组 -->
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <ui:Button Grid.Column="0"
-                                  Content="发布 AMQP" 
-                                  Icon="{ui:SymbolIcon Send24}"
-                                  Command="{Binding SendAmqpCommand}"
-                                  Appearance="Primary"
-                                  HorizontalAlignment="Stretch"/>
-
-                        <ui:Button Grid.Column="2"
-                                  Content="发布 MQTT" 
-                                  Icon="{ui:SymbolIcon Send24}"
-                                  Command="{Binding SendMqttCommand}"
-                                  Appearance="Primary"
-                                  HorizontalAlignment="Stretch"/>
-
-                        <ui:Button Grid.Column="4"
-                                  Content="同时发布" 
-                                  Icon="{ui:SymbolIcon SendCopy24}"
-                                  Command="{Binding SendBothCommand}"
-                                  Appearance="Success"
-                                  HorizontalAlignment="Stretch"/>
-                    </Grid>
-                </StackPanel>
-            </ui:Card>
-
-            <!-- 欢迎区域 -->
-            <Border Grid.Row="1" 
-                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
                     CornerRadius="8"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
                 <StackPanel HorizontalAlignment="Center" 
                            VerticalAlignment="Center">
-                    <Border Width="80" Height="80"
-                            Background="{DynamicResource AccentFillColorDefaultBrush}"
-                            CornerRadius="40"
-                            Margin="0,0,0,20">
-                        <ui:SymbolIcon Symbol="Mail24" 
-                                      FontSize="40"
-                                      Foreground="White"/>
+                    <Border Width="100" Height="100"
+                            CornerRadius="50"
+                            Margin="0,0,0,25">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#9E9E9E"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <ui:SymbolIcon FontSize="50" Foreground="White">
+                            <ui:SymbolIcon.Style>
+                                <Style TargetType="ui:SymbolIcon">
+                                    <Setter Property="Symbol" Value="Stop24"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                            <Setter Property="Symbol" Value="Play24"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:SymbolIcon.Style>
+                        </ui:SymbolIcon>
                     </Border>
-                    <TextBlock Text="WPF 消息发布系统" 
-                              FontSize="24" 
+
+                    <TextBlock FontSize="28" 
                               FontWeight="SemiBold"
                               HorizontalAlignment="Center"
-                              Margin="0,0,0,12"/>
-                    <TextBlock Text="基于 RabbitMQ.Client 7.1.2 和 MQTTnet 5.0.1"
-                              FontSize="13"
+                              Margin="0,0,0,12">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="服务已停止"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                        <Setter Property="Text" Value="服务运行中"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="CFX 消息自动发布服务"
+                              FontSize="16"
                               HorizontalAlignment="Center"
+                              Margin="0,0,0,8"
                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+
+                    <TextBlock FontSize="13"
+                              HorizontalAlignment="Center"
+                              Foreground="{DynamicResource TextFillColorTertiaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="点击启动服务开始自动发布消息"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                        <Setter Property="Text" Value="正在监控文件变化并自动发布消息"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
             </Border>
         </Grid>
@@ -227,7 +258,7 @@
 
                 <!-- 标题 -->
                 <StackPanel Grid.Row="0" Margin="0,0,0,15">
-                    <TextBlock Text="已发送消息" 
+                    <TextBlock Text="消息历史" 
                               FontWeight="SemiBold" 
                               FontSize="18"/>
                     <TextBlock Text="{Binding SentMessages.Count, StringFormat='共 {0} 条消息'}" 

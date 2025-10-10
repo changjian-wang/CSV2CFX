@@ -1,7 +1,14 @@
 ﻿using Flex.Csv2Cfx.Interfaces;
 using Flex.Csv2Cfx.Models;
-using Flex.Csv2Cfx.Views;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace Flex.Csv2Cfx.ViewModels
@@ -11,12 +18,17 @@ namespace Flex.Csv2Cfx.ViewModels
         private readonly IPageService _pageService;
         private readonly IAuthService _authService;
         private readonly IMessageService _messageService;
+        private readonly IMachineService _machineService;
+        private readonly IConfigurationService _configurationService;
+        private readonly ILogger<MainViewModel> _logger;
+
         private string _connectionStatus = "未连接";
         private ObservableCollection<Message> _sentMessages = new();
-        private string topic = "flex/heartbeat";
-        private string _messageContent = "测试消息内容：Hello, World!";
         private int _successCount = 0;
         private int _failCount = 0;
+        private bool _isServiceRunning = false;
+        private CancellationTokenSource? _serviceCancellationTokenSource;
+        private Timer? _heartbeatTimer;
 
         public ObservableCollection<NavigationItem> MenuItems { get; }
         public ObservableCollection<Message> SentMessages
@@ -26,33 +38,49 @@ namespace Flex.Csv2Cfx.ViewModels
         }
 
         public User CurrentUser => _authService.CurrentUser ?? new User();
-        private MessageProtocol _selectedProtocol;
-        public string ProtocolDisplayText => $"当前协议: {SelectedProtocol}";
-        public IEnumerable<MessageProtocol> AvailableProtocols => Enum.GetValues<MessageProtocol>();
 
+        private MessageProtocol _selectedProtocol;
         public MessageProtocol SelectedProtocol
         {
             get => _selectedProtocol;
             set
             {
+                // 保存旧值
+                var oldValue = _selectedProtocol;
+
+                // 如果服务正在运行，阻止切换并提示用户
+                if (IsServiceRunning && oldValue != value)
+                {
+                    // 显示提示对话框
+                    MessageBox.Show(
+                        "无法在服务运行时切换协议。\n请先停止服务，然后再切换协议。",
+                        "提示",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    // 强制恢复到旧值，触发UI更新
+                    OnPropertyChanged(nameof(SelectedProtocol));
+                    return;
+                }
+
+                // 只有在值真正改变时才更新
                 if (SetProperty(ref _selectedProtocol, value))
                 {
                     _messageService.SetProtocol(value);
                     OnPropertyChanged(nameof(ProtocolDisplayText));
+                    _logger.LogInformation("协议已切换为: {Protocol}", value);
+                    AddSystemMessage("系统", $"协议已切换为: {value}");
                 }
             }
         }
+
+        public string ProtocolDisplayText => $"当前协议: {SelectedProtocol}";
+        public IEnumerable<MessageProtocol> AvailableProtocols => Enum.GetValues<MessageProtocol>();
 
         public string ConnectionStatus
         {
             get => _connectionStatus;
             set => SetProperty(ref _connectionStatus, value);
-        }
-
-        public string MessageContent
-        {
-            get => _messageContent;
-            set => SetProperty(ref _messageContent, value);
         }
 
         public int SuccessCount
@@ -67,34 +95,59 @@ namespace Flex.Csv2Cfx.ViewModels
             set => SetProperty(ref _failCount, value);
         }
 
+        public bool IsServiceRunning
+        {
+            get => _isServiceRunning;
+            set
+            {
+                if (SetProperty(ref _isServiceRunning, value))
+                {
+                    OnPropertyChanged(nameof(ServiceStatusText));
+                    OnPropertyChanged(nameof(StartButtonText));
+                    OnPropertyChanged(nameof(CanChangeProtocol));
+                }
+            }
+        }
+
+        public bool CanChangeProtocol => !IsServiceRunning;
+
+        public string ServiceStatusText => IsServiceRunning ? "服务运行中" : "服务已停止";
+        public string StartButtonText => IsServiceRunning ? "停止服务" : "启动服务";
         public string StatsText => $"成功: {SuccessCount} 失败: {FailCount}";
 
-        public ICommand? NavigateCommand { get; }
-        public ICommand? SendAmqpCommand { get; }
-        public ICommand? SendMqttCommand { get; }
-        public ICommand? SendBothCommand { get; }
-        public ICommand? SendMessageCommand { get; }
-        public ICommand? ReconnectCommand { get; }
-        public ICommand? ClearMessagesCommand { get; }
+        public ICommand NavigateCommand { get; }
+        public ICommand ClearMessagesCommand { get; }
+        public ICommand ReconnectCommand { get; }
         public ICommand OpenSettingsCommand { get; }
+        public ICommand ToggleServiceCommand { get; }
 
-
-        public MainViewModel(IPageService pageService, IAuthService authService, IMessageService messageService)
+        public MainViewModel(
+            IPageService pageService,
+            IAuthService authService,
+            IMessageService messageService,
+            IMachineService machineService,
+            IConfigurationService configurationService,
+            ILogger<MainViewModel> logger)
         {
             _pageService = pageService;
             _authService = authService;
             _messageService = messageService;
+            _machineService = machineService;
+            _configurationService = configurationService;
+            _logger = logger;
 
             MenuItems = new ObservableCollection<NavigationItem>(_pageService.GetNavigationItems(CurrentUser));
 
             NavigateCommand = new RelayCommand(ExecuteNavigate);
             ClearMessagesCommand = new RelayCommand(ExecuteClearMessages);
-            SendAmqpCommand = new RelayCommand(async _ => await ExecuteSendAmqpAsync());
-            SendMqttCommand = new RelayCommand(async _ => await ExecuteSendMqttAsync());
-            SendBothCommand = new RelayCommand(async _ => await ExecuteSendBothAsync());
-            SendMessageCommand = new RelayCommand(async _ => await ExecuteSendMessageAsync());
             ReconnectCommand = new RelayCommand(async _ => await ExecuteReconnectAsync());
             OpenSettingsCommand = new RelayCommand(ExecuteOpenSettings);
+            ToggleServiceCommand = new RelayCommand(async _ => await ExecuteToggleServiceAsync());
+
+            // 加载协议设置
+            var settings = _configurationService.GetSettings();
+            _selectedProtocol = settings.PreferredProtocol;
+            _messageService.SetProtocol(_selectedProtocol);
 
             // 初始化消息服务连接
             _ = InitializeMessageServiceAsync();
@@ -104,41 +157,11 @@ namespace Flex.Csv2Cfx.ViewModels
         {
             ConnectionStatus = "连接中...";
             var connected = await _messageService.ConnectAsync();
+            ConnectionStatus = connected ? "已连接" : "连接失败";
 
             if (connected)
             {
-                ConnectionStatus = "已连接";
-                await LoadSentMessagesAsync();
-            }
-            else
-            {
-                ConnectionStatus = "连接失败";
-            }
-        }
-
-        private void ExecuteOpenSettings(object? parameter)
-        {
-            var settingsWindow = App.GetService<SettingsWindow>();
-            settingsWindow.ShowDialog();
-        }
-
-        private void UpdateStats(Message message)
-        {
-            if (message.Status == "成功")
-                SuccessCount++;
-            else if (message.Status.StartsWith("失败"))
-                FailCount++;
-
-            OnPropertyChanged(nameof(StatsText));
-        }
-
-        private async Task LoadSentMessagesAsync()
-        {
-            var messages = await _messageService.GetRecentSentMessagesAsync(50);
-            foreach (var msg in messages)
-            {
-                SentMessages.Add(msg);
-                UpdateStats(msg);
+                await RefreshMessagesAsync();
             }
         }
 
@@ -146,107 +169,261 @@ namespace Flex.Csv2Cfx.ViewModels
         {
             if (parameter is NavigationItem item)
             {
-                System.Diagnostics.Debug.WriteLine($"导航到: {item.Content}");
+                _logger.LogDebug($"导航到: {item.Content}");
             }
         }
 
-        // 新增统一发送方法
-        private async Task ExecuteSendMessageAsync()
+        private async Task ExecuteToggleServiceAsync()
         {
-            if (string.IsNullOrWhiteSpace(MessageContent))
-                return;
-
-            var result = await _messageService.PublishMessageAsync(topic, MessageContent);
-
-            if (result.Success)
+            if (IsServiceRunning)
             {
-                SuccessCount++;
-                System.Diagnostics.Debug.WriteLine($"消息发送成功: {result.Message}");
+                await StopServiceAsync();
             }
             else
             {
-                FailCount++;
-                System.Diagnostics.Debug.WriteLine($"消息发送失败: {result.Message}");
+                await StartServiceAsync();
             }
-
-            await RefreshMessagesAsync();
-            OnPropertyChanged(nameof(StatsText));
         }
 
-        private async Task ExecuteSendAmqpAsync()
+        private async Task StartServiceAsync()
         {
-            if (string.IsNullOrWhiteSpace(MessageContent))
-                return;
-
-            var result = await _messageService.PublishAmqpMessageAsync(
-                topic,
-                MessageContent);
-
-            if (result.Success)
+            try
             {
-                SuccessCount++;
-                System.Diagnostics.Debug.WriteLine("AMQP消息发送成功");
-            }
-            else
-            {
-                FailCount++;
-                System.Diagnostics.Debug.WriteLine($"AMQP消息发送失败: {result.Message}");
-            }
+                if (!_messageService.IsConnected)
+                {
+                    AddSystemMessage("系统", "消息服务未连接，正在重新连接...");
+                    var connected = await _messageService.ConnectAsync();
+                    if (!connected)
+                    {
+                        AddSystemMessage("系统", "消息服务连接失败，无法启动服务");
+                        MessageBox.Show(
+                            "消息服务连接失败，无法启动服务。\n请检查配置并重试。",
+                            "错误",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                        return;
+                    }
+                }
 
-            await RefreshMessagesAsync();
-            OnPropertyChanged(nameof(StatsText));
+                _serviceCancellationTokenSource = new CancellationTokenSource();
+                IsServiceRunning = true;
+
+                AddSystemMessage("系统", $"服务启动成功 (协议: {SelectedProtocol})");
+
+                // 获取配置并启动心跳定时器
+                var settings = _configurationService.GetSettings();
+                var heartbeatFrequency = settings.MachineSettings.Cfx.HeartbeatFrequency;
+
+                _heartbeatTimer = new Timer(
+                    async _ => await SendHeartbeatAsync(),
+                    null,
+                    TimeSpan.Zero,
+                    TimeSpan.FromSeconds(heartbeatFrequency));
+
+                // 启动后台任务处理工作流程和机器状态
+                _ = Task.Run(async () => await ProcessWorkflowAsync(_serviceCancellationTokenSource.Token));
+                _ = Task.Run(async () => await ProcessMachineStateAsync(_serviceCancellationTokenSource.Token));
+
+                _logger.LogInformation("服务已启动，协议: {Protocol}, 心跳频率: {Frequency}秒", SelectedProtocol, heartbeatFrequency);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "启动服务失败");
+                AddSystemMessage("系统", $"启动服务失败: {ex.Message}");
+                MessageBox.Show(
+                    $"启动服务失败：\n{ex.Message}",
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                IsServiceRunning = false;
+            }
         }
 
-        private async Task ExecuteSendMqttAsync()
+        private async Task StopServiceAsync()
         {
-            if (string.IsNullOrWhiteSpace(MessageContent))
-                return;
-
-            var result = await _messageService.PublishMqttMessageAsync(
-                topic,
-                MessageContent);
-
-            if (result.Success)
+            try
             {
-                SuccessCount++;
-                System.Diagnostics.Debug.WriteLine("MQTT消息发送成功");
-            }
-            else
-            {
-                FailCount++;
-                System.Diagnostics.Debug.WriteLine($"MQTT消息发送失败: {result.Message}");
-            }
+                _serviceCancellationTokenSource?.Cancel();
+                _heartbeatTimer?.Dispose();
+                _heartbeatTimer = null;
 
-            await RefreshMessagesAsync();
-            OnPropertyChanged(nameof(StatsText));
+                // 等待一小段时间让后台任务完成
+                await Task.Delay(500);
+
+                IsServiceRunning = false;
+                AddSystemMessage("系统", "服务已停止");
+
+                _logger.LogInformation("服务已停止");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "停止服务失败");
+                AddSystemMessage("系统", $"停止服务失败: {ex.Message}");
+            }
         }
 
-        private async Task ExecuteSendBothAsync()
+        private async Task SendHeartbeatAsync()
         {
-            if (string.IsNullOrWhiteSpace(MessageContent))
-                return;
-
-            var result = await _messageService.PublishBothAsync(
-                topic,
-                MessageContent);
-
-            if (result.Success)
+            try
             {
-                SuccessCount++;
-                System.Diagnostics.Debug.WriteLine("双协议消息发送成功");
+                var heartbeat = _machineService.GetHeartbeat();
+                var message = JsonSerializer.Serialize(heartbeat);
+                var topic = "flex/heartbeat";
+
+                var result = await _messageService.PublishMessageAsync(topic, message);
+
+                if (result.Success)
+                {
+                    SuccessCount++;
+                    _logger.LogDebug("心跳消息发送成功");
+                }
+                else
+                {
+                    FailCount++;
+                    _logger.LogWarning("心跳消息发送失败: {Message}", result.Message);
+                }
+
+                await RefreshMessagesAsync();
+                OnPropertyChanged(nameof(StatsText));
             }
-            else
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "发送心跳消息时发生错误");
                 FailCount++;
-                System.Diagnostics.Debug.WriteLine($"消息发送结果: {result.Message}");
+                OnPropertyChanged(nameof(StatsText));
             }
+        }
 
-            await RefreshMessagesAsync();
-            OnPropertyChanged(nameof(StatsText));
+        private async Task ProcessWorkflowAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("工作流程处理任务已启动");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var workProcesses = await _machineService.GetWorkProcessesAsync();
+
+                    if (workProcesses.Count > 0)
+                    {
+                        _logger.LogInformation("检测到 {Count} 条工作流程消息", workProcesses.Count);
+
+                        foreach (var process in workProcesses)
+                        {
+                            if (cancellationToken.IsCancellationRequested) break;
+
+                            var message = JsonSerializer.Serialize(process);
+                            var topic = "flex/works";
+
+                            var result = await _messageService.PublishMessageAsync(topic, message);
+
+                            if (result.Success)
+                            {
+                                SuccessCount++;
+                            }
+                            else
+                            {
+                                FailCount++;
+                                _logger.LogWarning("工作流程消息发送失败: {Message}", result.Message);
+                            }
+
+                            OnPropertyChanged(nameof(StatsText));
+                        }
+
+                        await RefreshMessagesAsync();
+                    }
+
+                    // 等待5秒再检查新文件
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("工作流程处理任务已取消");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "处理工作流程时发生错误");
+                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                }
+            }
+        }
+
+        private async Task ProcessMachineStateAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("机器状态处理任务已启动");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var machineStates = await _machineService.GetMachineStateAsync();
+
+                    if (machineStates.Count > 0)
+                    {
+                        _logger.LogInformation("检测到 {Count} 条机器状态消息", machineStates.Count);
+
+                        foreach (var state in machineStates)
+                        {
+                            if (cancellationToken.IsCancellationRequested) break;
+
+                            var message = JsonSerializer.Serialize(state);
+                            var topic = "flex/states";
+
+                            var result = await _messageService.PublishMessageAsync(topic, message);
+
+                            if (result.Success)
+                            {
+                                SuccessCount++;
+                            }
+                            else
+                            {
+                                FailCount++;
+                                _logger.LogWarning("机器状态消息发送失败: {Message}", result.Message);
+                            }
+
+                            OnPropertyChanged(nameof(StatsText));
+                        }
+
+                        await RefreshMessagesAsync();
+                    }
+
+                    // 等待5秒再检查新文件
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("机器状态处理任务已取消");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "处理机器状态时发生错误");
+                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                }
+            }
         }
 
         private async Task ExecuteReconnectAsync()
         {
+            if (IsServiceRunning)
+            {
+                var result = MessageBox.Show(
+                    "服务正在运行中。\n是否停止服务并重新连接？",
+                    "确认",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    await StopServiceAsync();
+                }
+                else
+                {
+                    return;
+                }
+            }
+
             ConnectionStatus = "重新连接中...";
             _messageService.Disconnect();
             await InitializeMessageServiceAsync();
@@ -273,9 +450,48 @@ namespace Flex.Csv2Cfx.ViewModels
             OnPropertyChanged(nameof(StatsText));
         }
 
-        private async Task StartServiceAsync()
+        private void AddSystemMessage(string type, string content)
         {
-            
+            var message = new Message
+            {
+                Protocol = "SYSTEM",
+                Topic = type,
+                Content = content,
+                Timestamp = DateTime.Now,
+                Status = "信息"
+            };
+
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                SentMessages.Insert(0, message);
+            });
+        }
+
+        private void ExecuteOpenSettings(object? parameter)
+        {
+            if (IsServiceRunning)
+            {
+                var result = MessageBox.Show(
+                    "服务正在运行中。\n修改配置需要停止服务。\n是否继续？",
+                    "提示",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.No)
+                {
+                    return;
+                }
+            }
+
+            var settingsWindow = App.GetService<Views.SettingsWindow>();
+            settingsWindow?.ShowDialog();
+        }
+
+        public void Cleanup()
+        {
+            _serviceCancellationTokenSource?.Cancel();
+            _heartbeatTimer?.Dispose();
+            _serviceCancellationTokenSource?.Dispose();
         }
     }
 }
