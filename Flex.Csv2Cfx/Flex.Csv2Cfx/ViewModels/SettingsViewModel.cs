@@ -4,7 +4,6 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -244,9 +243,11 @@ namespace Flex.Csv2Cfx.ViewModels
                         }
                     },
                     PreferredProtocol = SelectedProtocol
+                    // 注意：这里不设置 LoginApiUrl，因为我们要保留它
                 };
 
-                await _configurationService.SaveSettingsAsync(settings);
+                // 使用 preserveLoginApiUrl = true 保存，这样不会覆盖 Login API URL
+                await _configurationService.SaveSettingsAsync(settings, preserveLoginApiUrl: true);
 
                 ShowSuccessMessage = true;
 

@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Flex.Csv2Cfx.Interfaces
@@ -10,6 +7,7 @@ namespace Flex.Csv2Cfx.Interfaces
     {
         AppSettings GetSettings();
         Task SaveSettingsAsync(AppSettings settings);
+        Task SaveSettingsAsync(AppSettings settings, bool preserveLoginApiUrl);
         event EventHandler? ConfigurationChanged;
     }
 }

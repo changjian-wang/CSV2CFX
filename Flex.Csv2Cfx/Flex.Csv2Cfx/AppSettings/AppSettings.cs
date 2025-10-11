@@ -15,6 +15,9 @@ namespace Flex.Csv2Cfx
         public MachineSettings MachineSettings { get; set; } = new();
 
         public MessageProtocol PreferredProtocol { get; set; } = MessageProtocol.MQTT;
+
+        // 登录 API URL
+        public string LoginApiUrl { get; set; } = "https://api.example.com/auth/login";
     }
 
     //public enum MessageProtocol

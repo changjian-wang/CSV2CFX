@@ -1,61 +1,69 @@
 ﻿<ui:FluentWindow x:Class="Flex.Csv2Cfx.Views.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
         Title="系统登录" 
-        Height="400" 
-        Width="350"
+        Height="480" 
+        Width="500"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
+    <Grid>
+        <StackPanel VerticalAlignment="Center" 
+                    HorizontalAlignment="Center" 
+                    Width="350">
 
-    <Grid Margin="20">
-        <StackPanel VerticalAlignment="Center">
-            <!-- Logo/标题 -->
-            <TextBlock Text="WPF消息系统" 
-                      FontSize="24" 
-                      FontWeight="Bold" 
-                      HorizontalAlignment="Center"
-                      Margin="0,0,0,30"/>
+            <!-- 标题 -->
+            <TextBlock Text="CSV2CFX 系统登录" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       HorizontalAlignment="Center" 
+                       Margin="0,0,0,30"/>
 
-            <!-- 登录表单 -->
-            <StackPanel>
-                <ui:TextBox PlaceholderText="用户名"
+            <!-- Login API URL -->
+            <TextBlock Text="登录 API 地址" 
+                       Margin="0,0,0,8"/>
+            <ui:TextBox PlaceholderText="https://api.example.com/auth/login"
+                        Text="{Binding LoginApiUrl, UpdateSourceTrigger=PropertyChanged}"
+                        Margin="0,0,0,15"/>
+
+            <!-- 用户名 -->
+            <TextBlock Text="用户名" 
+                       Margin="0,0,0,8"/>
+            <ui:TextBox PlaceholderText="请输入用户名"
                         Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                         Margin="0,0,0,15"/>
 
-                <ui:PasswordBox PlaceholderText="密码"
-                           x:Name="PasswordBoxControl"
-                           PasswordChanged="PasswordBox_PasswordChanged"
-                           Margin="0,0,0,15"/>
+            <!-- 密码 -->
+            <TextBlock Text="密码" 
+                       Margin="0,0,0,8"/>
+            <ui:PasswordBox x:Name="PasswordBox"
+                            PlaceholderText="请输入密码"
+                            PasswordChanged="PasswordBox_PasswordChanged"
+                            Margin="0,0,0,20"/>
 
-                <!-- 错误信息 -->
-                <Border Background="#FFE7E7" 
-                       BorderBrush="#FF6B6B" 
-                       BorderThickness="1" 
-                       CornerRadius="4"
-                       Padding="10,8"
-                       Margin="0,0,0,15"
-                       Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="{Binding ErrorMessage}" 
-                              Foreground="#D13438"
-                              TextWrapping="Wrap"/>
-                </Border>
+            <!-- 错误消息 -->
+            <Border Background="#FFEBEE" 
+                    BorderBrush="#E57373"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10"
+                    Margin="0,0,0,15"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="{Binding ErrorMessage}" 
+                           Foreground="#C62828" 
+                           TextWrapping="Wrap"/>
+            </Border>
 
-                <!-- 登录按钮 -->
-                <ui:Button Content="登录" 
+            <!-- 登录按钮 -->
+            <ui:Button Content="登录"
                        Command="{Binding LoginCommand}"
                        CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
                        Appearance="Primary"
                        HorizontalAlignment="Stretch"
-                       Height="35"/>
-            </StackPanel>
-
-            <!-- 测试账号提示 -->
-            <TextBlock Text="测试账号: admin/admin123 或 user/user123" 
-                      FontSize="11" 
-                      Foreground="Gray"
-                      HorizontalAlignment="Center"
-                      Margin="0,20,0,0"/>
+                       Height="40"/>
         </StackPanel>
     </Grid>
 </ui:FluentWindow>

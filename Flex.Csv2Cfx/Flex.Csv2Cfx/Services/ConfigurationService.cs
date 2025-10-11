@@ -3,8 +3,6 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -55,10 +53,25 @@ namespace Flex.Csv2Cfx.Services
             _configuration.GetSection("MachineSettings:Cfx").Bind(settings.MachineSettings.Cfx);
             _configuration.GetSection("MachineSettings:Csv").Bind(settings.MachineSettings.Csv);
 
+            // 读取 LoginApiUrl
+            settings.LoginApiUrl = _configuration["LoginApiUrl"] ?? "https://api.example.com/auth/login";
+
+            // 读取 PreferredProtocol
+            if (Enum.TryParse<MessageProtocol>(_configuration["PreferredProtocol"], out var protocol))
+            {
+                settings.PreferredProtocol = protocol;
+            }
+
             return settings;
         }
 
         public async Task SaveSettingsAsync(AppSettings settings)
+        {
+            await SaveSettingsAsync(settings, preserveLoginApiUrl: false);
+        }
+
+        // 新增：支持保留 LoginApiUrl 的保存方法
+        public async Task SaveSettingsAsync(AppSettings settings, bool preserveLoginApiUrl)
         {
             // 读取现有的 JSON
             var json = await File.ReadAllTextAsync(_configFilePath);
@@ -73,6 +86,19 @@ namespace Flex.Csv2Cfx.Services
             {
                 configObject["Logging"] = JsonSerializer.Deserialize<object>(loggingElement.GetRawText())!;
             }
+
+            // 如果需要保留 LoginApiUrl，从现有配置读取；否则使用传入的值
+            if (preserveLoginApiUrl && root.TryGetProperty("LoginApiUrl", out var loginApiElement))
+            {
+                configObject["LoginApiUrl"] = loginApiElement.GetString() ?? "https://api.example.com/auth/login";
+            }
+            else
+            {
+                configObject["LoginApiUrl"] = settings.LoginApiUrl;
+            }
+
+            // 更新 PreferredProtocol
+            configObject["PreferredProtocol"] = settings.PreferredProtocol.ToString();
 
             // 更新 MqttSettings 和 RabbitMqSettings
             configObject["MqttSettings"] = settings.MqttSettings;
