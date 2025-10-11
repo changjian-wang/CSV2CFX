@@ -49,6 +49,7 @@ namespace Flex.Csv2Cfx
             services.AddSingleton<IUserContext, UserContext>();
             services.AddSingleton<IConfigurationService, ConfigurationService>();
             services.AddSingleton<IMachineService, MachineService>();
+            services.AddSingleton<ICfxAmqpService, CfxAmqpService>();
 
             // 注册ViewModels
             services.AddTransient<LoginViewModel>();

@@ -11,8 +11,24 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
     <PackageReference Include="MQTTnet" Version="5.0.1.1416" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
     <PackageReference Include="WPF-UI" Version="4.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Amqp.Net">
+      <HintPath>..\packages\Amqp.Net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="CFX">
+      <HintPath>..\packages\CFX.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="wuz-ipc-cfx">
+      <HintPath>..\packages\wuz-ipc-cfx.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
