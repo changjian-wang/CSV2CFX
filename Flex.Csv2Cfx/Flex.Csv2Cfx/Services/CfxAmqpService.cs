@@ -3,14 +3,14 @@ using CFX.Production;
 using CFX.Production.Processing;
 using CFX.ResourcePerformance;
 using CFX.Structures;
-using CFX.Transport;
 using Flex.Csv2Cfx.Interfaces;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using RabbitMQ.Client; // ✅ 添加 RabbitMQ.Client 引用
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using wuz_ipc_cfx_test;
 
 namespace Flex.Csv2Cfx.Services
 {
@@ -19,10 +19,14 @@ namespace Flex.Csv2Cfx.Services
         private readonly ILogger<CfxAmqpService> _logger;
         private readonly IConfigurationService _configurationService;
 
-        private AmqpCFXEndpoint? _myEndpoint;
+        private dllHelper? _dllHelper;
         private bool _isBeat = false;
         private List<string>? _beatMsg = null;
         private const string EXCHANGE_NAME = "amq.topic";
+
+        // ✅ 添加队列管理连接
+        private IConnection? _queueManagementConnection;
+        private IChannel? _queueManagementChannel;
 
         private Metadata _metadata = new Metadata();
         private string _uniqueId = "";
@@ -31,46 +35,72 @@ namespace Flex.Csv2Cfx.Services
         private string _cfxBrokerExchange = "";
         private string _routingKey = "";
 
+        // ✅ 定义统一的队列主题
+        //private readonly List<string> _queueTopics = new List<string>
+        //{
+        //    "flex/heartbeat",
+        //    "flex/works",
+        //    "flex/states"
+        //};
+
+        private readonly List<string> _queueTopics = new List<string>
+        {
+            "ipc-cfx"
+        };
+
         public CfxAmqpService(
             ILogger<CfxAmqpService> logger,
             IConfigurationService configurationService)
         {
             _logger = logger;
             _configurationService = configurationService;
-
-            // 从配置加载
             LoadConfiguration();
         }
 
         private void LoadConfiguration()
         {
-            var settings = _configurationService.GetSettings();
-            var machineMetadata = settings.MachineSettings.Metadata;
-            var rabbitMq = settings.RabbitMqSettings;
-            var cfx = settings.MachineSettings.Cfx;
-
-            // 创建 Metadata
-            _metadata = new Metadata
+            try
             {
-                building = machineMetadata.Building,
-                device = machineMetadata.Device,
-                area_name = machineMetadata.AreaName,
-                org = machineMetadata.Organization,
-                line_name = machineMetadata.LineName,
-                site_name = machineMetadata.SiteName,
-                station_name = machineMetadata.StationName,
-                Process_type = machineMetadata.ProcessType,
-                machine_name = machineMetadata.MachineName,
-                previus_status = "Running",
-                time_last_status = "00:00:00"
-            };
+                var settings = _configurationService.GetSettings();
+                var machineMetadata = settings.MachineSettings.Metadata;
+                var rabbitMq = settings.RabbitMqSettings;
+                var cfx = settings.MachineSettings.Cfx;
 
-            _uniqueId = cfx.UniqueId;
-            //"AmqpBrokerUri": "amqp://guest:guest@localhost:5672"
-            _cfxEventBroker = $"amqp://{rabbitMq.Username}:{rabbitMq.Password}@{rabbitMq.HostName}:5672";
-            _cfxBrokerExchange = EXCHANGE_NAME;
-            _routingKey = _uniqueId ?? string.Empty;
-            _myCFXHandle = _routingKey; // 使用 routing key 作为 CFX Handle
+                // 创建 Metadata
+                _metadata = new Metadata
+                {
+                    building = machineMetadata.Building ?? "",
+                    device = machineMetadata.Device ?? "",
+                    area_name = machineMetadata.AreaName ?? "",
+                    org = machineMetadata.Organization ?? "",
+                    line_name = machineMetadata.LineName ?? "",
+                    site_name = machineMetadata.SiteName ?? "",
+                    station_name = machineMetadata.StationName ?? "",
+                    Process_type = machineMetadata.ProcessType ?? "",
+                    machine_name = machineMetadata.MachineName ?? "",
+                    Created_by = string.IsNullOrEmpty(machineMetadata.CreatedBy) ? "GA" : machineMetadata.CreatedBy,
+                    previus_status = "Running",
+                    time_last_status = "00:00:00"
+                };
+
+                _uniqueId = cfx.UniqueId;
+
+                _cfxEventBroker = $"amqp://{rabbitMq.Username}:{rabbitMq.Password}@{rabbitMq.HostName}:5672";
+                _cfxBrokerExchange = EXCHANGE_NAME;
+                _routingKey = _uniqueId;
+                _myCFXHandle = _routingKey;
+
+                _logger.LogInformation("AMQP 配置加载完成:");
+                _logger.LogInformation("  - Broker: {Broker}", _cfxEventBroker);
+                _logger.LogInformation("  - Exchange: {Exchange}", _cfxBrokerExchange);
+                _logger.LogInformation("  - RoutingKey: {RoutingKey}", _routingKey);
+                _logger.LogInformation("  - CFXHandle: {CFXHandle}", _myCFXHandle);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "加载 AMQP 配置失败");
+                throw;
+            }
         }
 
         public bool IsConnected => _isBeat;
@@ -79,137 +109,215 @@ namespace Flex.Csv2Cfx.Services
         {
             get
             {
-                if (_myEndpoint == null)
+                if (_dllHelper == null)
                 {
                     return false;
                 }
-                return _myEndpoint.IsOpen;
+                return _isBeat;
             }
         }
 
         /// <summary>
-        /// 打开 AMQP 终端连接（带 Routing Key）
+        /// 打开 AMQP 终端连接（带 Routing Key）并创建统一队列
         /// </summary>
         public async Task<(bool success, string message)> OpenEndpointTopicAsync()
         {
-            return await Task.Run(() =>
+            return await Task.Run(async () =>
             {
                 CloseEndpoint();
 
                 try
                 {
-                    _myEndpoint = new AmqpCFXEndpoint(_metadata, _uniqueId);
-                    _myEndpoint.Open(_myCFXHandle);
+                    _logger.LogDebug("创建新的 dllHelper 实例");
 
-                    Exception? error = null;
-                    if (!_myEndpoint.TestPublishChannel(new Uri(_cfxEventBroker), _cfxBrokerExchange, out error))
+                    _dllHelper = new dllHelper(
+                        _cfxEventBroker,
+                        _cfxBrokerExchange,
+                        _routingKey,
+                        _myCFXHandle,
+                        _metadata,
+                        _uniqueId);
+
+                    string msg;
+                    _dllHelper.OpenEndpointTopic(out msg);
+
+                    _logger.LogDebug("OpenEndpointTopic 返回: {Message}", msg);
+
+                    if (msg.StartsWith("ERROR"))
                     {
-                        var msg = $"ERROR: Unable to connect to broker {_cfxEventBroker} Exchange {_cfxBrokerExchange}\nERROR MESSAGE: {error?.Message}";
-                        _logger.LogError(msg);
+                        _logger.LogError("AMQP 连接失败: {Message}", msg);
                         CloseEndpoint();
                         return (false, msg);
                     }
                     else
                     {
-                        _myEndpoint.AddPublishChannel(new Uri(_cfxEventBroker), _cfxBrokerExchange, _routingKey);
-                        _myEndpoint.OnConnectionEvent -= State_OnConnectionEvent;
-                        _myEndpoint.OnConnectionEvent += State_OnConnectionEvent;
-
                         _isBeat = true;
                         _beatMsg = null;
+                        _logger.LogInformation("AMQP 终端连接成功 (Topic)");
 
-                        _logger.LogInformation("AMQP 终端连接成功: {Broker}, Exchange: {Exchange}, RoutingKey: {RoutingKey}",
-                            _cfxEventBroker, _cfxBrokerExchange, _routingKey);
+                        // ✅ 创建统一队列
+                        var queueResult = await CreateUnifiedQueuesAsync();
+                        if (!queueResult.success)
+                        {
+                            _logger.LogWarning("队列创建失败，但 CFX 连接仍然可用: {Message}", queueResult.message);
+                        }
 
-                        return (true, "Open Success");
+                        return (true, msg);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "打开 AMQP 终端时发生错误");
+                    _logger.LogError(ex, "打开 AMQP 终端 (Topic) 时发生错误");
+                    CloseEndpoint();
                     return (false, $"错误: {ex.Message}");
                 }
             });
         }
 
         /// <summary>
-        /// 打开 AMQP 终端连接（不带 Routing Key）
+        /// 打开 AMQP 终端连接（不带 Routing Key）并创建统一队列
         /// </summary>
         public async Task<(bool success, string message)> OpenEndpointAsync()
         {
-            return await Task.Run(() =>
+            return await Task.Run(async () =>
             {
                 CloseEndpoint();
 
                 try
                 {
-                    _myEndpoint = new AmqpCFXEndpoint(_metadata, _uniqueId);
-                    _myEndpoint.Open(_myCFXHandle);
+                    _dllHelper = new dllHelper(
+                        _cfxEventBroker,
+                        _cfxBrokerExchange,
+                        _routingKey,
+                        _myCFXHandle,
+                        _metadata,
+                        _uniqueId);
 
-                    Exception? error = null;
-                    if (!_myEndpoint.TestPublishChannel(new Uri(_cfxEventBroker), _cfxBrokerExchange, out error))
+                    string msg;
+                    _dllHelper.OpenEndpoint(out msg);
+
+                    if (msg.StartsWith("ERROR"))
                     {
-                        var msg = $"ERROR: Unable to connect to broker {_cfxEventBroker} Exchange {_cfxBrokerExchange}\nERROR MESSAGE: {error?.Message}";
-                        _logger.LogError(msg);
+                        _logger.LogError("AMQP 连接失败: {Message}", msg);
                         CloseEndpoint();
                         return (false, msg);
                     }
                     else
                     {
-                        _myEndpoint.AddPublishChannel(new Uri(_cfxEventBroker), _cfxBrokerExchange);
-                        _myEndpoint.OnConnectionEvent -= State_OnConnectionEvent;
-                        _myEndpoint.OnConnectionEvent += State_OnConnectionEvent;
-
                         _isBeat = true;
                         _beatMsg = null;
+                        _logger.LogInformation("AMQP 终端连接成功");
 
-                        _logger.LogInformation("AMQP 终端连接成功: {Broker}, Exchange: {Exchange}",
-                            _cfxEventBroker, _cfxBrokerExchange);
+                        // ✅ 创建统一队列
+                        var queueResult = await CreateUnifiedQueuesAsync();
+                        if (!queueResult.success)
+                        {
+                            _logger.LogWarning("队列创建失败，但 CFX 连接仍然可用: {Message}", queueResult.message);
+                        }
 
-                        return (true, "Open Success");
+                        return (true, msg);
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "打开 AMQP 终端时发生错误");
+                    CloseEndpoint();
                     return (false, $"错误: {ex.Message}");
                 }
             });
         }
 
         /// <summary>
-        /// 连接事件处理
+        /// 创建统一队列（与 MQTT 兼容）
         /// </summary>
-        private void State_OnConnectionEvent(
-            ConnectionEvent eventType,
-            Uri uri,
-            int spoolSize,
-            string errorInformation,
-            Exception? errorException = null)
+        private async Task<(bool success, string message)> CreateUnifiedQueuesAsync()
         {
-            if (eventType == ConnectionEvent.ConnectionEstablished)
+            try
             {
-                _isBeat = true;
-                _beatMsg = null;
-                _logger.LogInformation("AMQP 连接已建立: {Uri}", uri);
+                var settings = _configurationService.GetSettings();
+                var rabbitMq = settings.RabbitMqSettings;
+
+                _logger.LogInformation("开始创建统一队列...");
+
+                // 创建队列管理连接
+                var factory = new ConnectionFactory
+                {
+                    HostName = rabbitMq.HostName,
+                    UserName = rabbitMq.Username,
+                    Password = rabbitMq.Password,
+                    VirtualHost = rabbitMq.VirtualHost,
+                    RequestedConnectionTimeout = TimeSpan.FromSeconds(30),
+                    RequestedHeartbeat = TimeSpan.FromSeconds(60)
+                };
+
+                _queueManagementConnection = await factory.CreateConnectionAsync();
+                _queueManagementChannel = await _queueManagementConnection.CreateChannelAsync();
+
+                _logger.LogInformation("队列管理连接已建立");
+
+                int successCount = 0;
+                int totalQueues = _queueTopics.Count;
+
+                foreach (var topic in _queueTopics)
+                {
+                    try
+                    {
+                        // string queueName = $"unified.queue.{topic.Replace("/", ".")}";
+                        string queueName = topic;
+
+                        // 声明队列（幂等操作，如果已存在则不会报错）
+                        await _queueManagementChannel.QueueDeclareAsync(
+                            queue: queueName,
+                            durable: true,
+                            exclusive: false,
+                            autoDelete: false,
+                            arguments: null);
+
+                        _logger.LogDebug("队列已声明: {QueueName}", queueName);
+
+                        // 绑定队列到 amq.topic 交换机 - 使用 "/" 格式（标准 AMQP routing key）
+                        await _queueManagementChannel.QueueBindAsync(
+                            queue: queueName,
+                            exchange: EXCHANGE_NAME,
+                            routingKey: _uniqueId,
+                            arguments: null);
+
+                        _logger.LogDebug("队列已绑定 (AMQP 格式): {QueueName} -> {RoutingKey}", queueName, topic);
+
+                        // 绑定队列到 amq.topic 交换机 - 使用 "." 格式（MQTT 兼容）
+                        await _queueManagementChannel.QueueBindAsync(
+                            queue: queueName,
+                            exchange: EXCHANGE_NAME,
+                            routingKey: _uniqueId,
+                            arguments: null);
+
+                        _logger.LogDebug("队列已绑定 (MQTT 格式): {QueueName} -> {RoutingKey}", queueName, _uniqueId);
+
+                        successCount++;
+                        _logger.LogInformation("✅ 队列创建并绑定成功: {QueueName} (绑定: {Topic1}, {Topic2})",
+                            queueName, topic, _uniqueId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "创建队列失败: {Topic}", topic);
+                    }
+                }
+
+                if (successCount == totalQueues)
+                {
+                    _logger.LogInformation("所有统一队列创建成功 ({SuccessCount}/{TotalCount})", successCount, totalQueues);
+                    return (true, "所有队列创建成功");
+                }
+                else
+                {
+                    _logger.LogWarning("部分队列创建失败 ({SuccessCount}/{TotalCount})", successCount, totalQueues);
+                    return (false, $"部分队列创建失败 ({successCount}/{totalQueues})");
+                }
             }
-
-            if (errorException != null)
+            catch (Exception ex)
             {
-                _isBeat = false;
-
-                if (_beatMsg == null)
-                {
-                    _beatMsg = new List<string>();
-                }
-
-                if (_beatMsg.Count < 2)
-                {
-                    _beatMsg.Add(errorInformation);
-                }
-
-                _logger.LogError(errorException, "AMQP 连接错误: {ErrorInfo}", errorInformation);
-                CloseEndpoint();
+                _logger.LogError(ex, "创建统一队列时发生错误");
+                return (false, $"队列创建失败: {ex.Message}");
             }
         }
 
@@ -226,46 +334,39 @@ namespace Flex.Csv2Cfx.Services
         }
 
         /// <summary>
-        /// 将 DateTime 字符串转换为 DateTime
-        /// </summary>
-        private DateTime GetDateTimeFromStr(string inputDateTime)
-        {
-            long ticks = DateTime.Parse(inputDateTime).Ticks;
-            return new DateTime(ticks, DateTimeKind.Local);
-        }
-
-        /// <summary>
         /// 发送通用 JSON 数据
         /// </summary>
         public async Task<(bool success, string json)> SendCommonJsonDataAsync(string jsonData)
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    _logger.LogWarning("AMQP 未连接，无法发送消息: {Error}", errorMsg);
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    CFXEnvelope envelope = CFXEnvelope.FromJson(jsonData);
-                    _myEndpoint!.Publish(envelope);
-                    jsonSend = envelope.ToJson(formatted: true);
+                    string jsonSend;
+                    bool success = _dllHelper.sendCommonJsonData(jsonData, out jsonSend);
+                    _isBeat = success;
 
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                    if (success)
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogDebug("通用 JSON 数据已发送");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("发送通用 JSON 数据失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("通用 JSON 消息已发送");
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送通用 JSON 消息时发生错误");
+                    _logger.LogError(ex, "发送通用 JSON 数据时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -281,63 +382,40 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    _logger.LogWarning("AMQP 未连接，无法发送心跳: {Error}", errorMsg);
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    List<Fault> faultList = new List<Fault>();
-                    foreach (string faultJson in activeFaults)
+                    string jsonSend;
+                    bool success = _dllHelper.sendHeartbeat(activeFaults, activeRecipes, heartbeatFrequency, out jsonSend);
+                    _isBeat = success;
+
+                    if (success)
                     {
-                        Fault fault = JsonConvert.DeserializeObject<Fault>(faultJson);
-                        faultList.Add(fault);
+                        _logger.LogDebug("心跳消息已发送");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("发送心跳消息失败: {Error}", jsonSend);
                     }
 
-                    List<ActiveRecipe> recipeList = new List<ActiveRecipe>();
-                    foreach (string recipeJson in activeRecipes)
-                    {
-                        ActiveRecipe recipe = JsonConvert.DeserializeObject<ActiveRecipe>(recipeJson);
-                        recipeList.Add(recipe);
-                    }
-
-                    TimeSpan frequency = TimeSpan.Parse(heartbeatFrequency);
-
-                    CFXEnvelope envelope = new CFXEnvelope(new Heartbeat(_metadata)
-                    {
-                        ActiveFaults = faultList,
-                        ActiveRecipes = recipeList,
-                        CFXHandle = _myCFXHandle,
-                        HeartbeatFrequency = frequency
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.HeartbeatFrequency = frequency;
-                    _myEndpoint.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
-                    {
-                        jsonSend = string.Join(",", _beatMsg);
-                    }
-
-                    _logger.LogDebug("心跳消息已发送");
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送心跳消息时发生错误");
+                    _logger.LogError(ex, "发送心跳消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
         }
+
+        // ✅ 以下方法保持不变（SendWorkStartedAsync, SendWorkCompletedAsync 等）
+        // 为了简洁，这里省略，使用之前提供的完整实现
 
         /// <summary>
         /// 发送工作开始消息
@@ -349,48 +427,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid txId = Guid.Parse(transactionId);
+                    string jsonSend;
+                    bool success = _dllHelper.sendWorkStarted(transactionId, lane, primaryIdentifier, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new WorkStarted
+                    if (success)
                     {
-                        Lane = lane,
-                        PrimaryIdentifier = primaryIdentifier,
-                        HermesIdentifier = null,
-                        TransactionID = txId,
-                        UnitCount = null,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("工作开始消息已发送: TransactionID={TransactionId}", transactionId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("发送工作开始消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("工作开始消息已发送: TransactionID={TransactionId}, Lane={Lane}",
-                        transactionId, lane);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送工作开始消息时发生错误");
+                    _logger.LogError(ex, "发送工作开始消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -406,48 +468,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid txId = Guid.Parse(transactionId);
+                    string jsonSend;
+                    bool success = _dllHelper.sendWorkCompleted(transactionId, result, primaryIdentifier, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new WorkCompleted
+                    if (success)
                     {
-                        PrimaryIdentifier = primaryIdentifier,
-                        HermesIdentifier = null,
-                        TransactionID = txId,
-                        UnitCount = null,
-                        Result = (WorkResult)result,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("工作完成消息已发送: TransactionID={TransactionId}", transactionId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("发送工作完成消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("工作完成消息已发送: TransactionID={TransactionId}, Result={Result}",
-                        transactionId, result);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送工作完成消息时发生错误");
+                    _logger.LogError(ex, "发送工作完成消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -464,47 +510,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid txId = Guid.Parse(transactionId);
+                    string jsonSend;
+                    bool success = _dllHelper.sendUnitsProcessed(transactionId, overallResult, recipeName, commonProcessData, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new UnitsProcessed
+                    if (success)
                     {
-                        OverallResult = (ProcessingResult)overallResult,
-                        TransactionId = txId,
-                        RecipeName = recipeName,
-                        CommonProcessData = commonProcessData,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("单元处理消息已发送: TransactionID={TransactionId}", transactionId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("发送单元处理消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("单元处理消息已发送: TransactionID={TransactionId}, Recipe={Recipe}",
-                        transactionId, recipeName);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送单元处理消息时发生错误");
+                    _logger.LogError(ex, "发送单元处理消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -517,41 +548,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    CFXEnvelope envelope = new CFXEnvelope(new FaultOccurred
+                    string jsonSend;
+                    bool success = _dllHelper.sendFaultOccurred(fault, out jsonSend);
+                    _isBeat = success;
+
+                    if (success)
                     {
-                        Fault = fault,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("故障发生消息已发送: FaultCode={FaultCode}", fault.FaultCode);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("发送故障发生消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("故障发生消息已发送: FaultCode={FaultCode}", fault.FaultCode);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送故障发生消息时发生错误");
+                    _logger.LogError(ex, "发送故障发生消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -564,45 +586,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid faultOccurrenceId = fault.FaultOccurrenceId;
+                    string jsonSend;
+                    bool success = _dllHelper.sendFaultCleared(fault, @operator, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new FaultCleared
+                    if (success)
                     {
-                        FaultOccurrenceId = faultOccurrenceId,
-                        Operator = @operator,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("故障清除消息已发送: FaultOccurrenceId={FaultOccurrenceId}", fault.FaultOccurrenceId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("发送故障清除消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("故障清除消息已发送: FaultOccurrenceId={FaultOccurrenceId}",
-                        faultOccurrenceId);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送故障清除消息时发生错误");
+                    _logger.LogError(ex, "发送故障清除消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -619,44 +628,33 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    CFXEnvelope envelope = new CFXEnvelope(new StationStateChanged
+                    string jsonSend;
+                    bool success = _dllHelper.sendStationStateChanged(oldState, oldStateDuration, newState, relatedFault, out jsonSend);
+                    _isBeat = success;
+
+                    if (success)
                     {
-                        OldState = (ResourceState)oldState,
-                        OldStateDuration = TimeSpan.Parse(oldStateDuration),
-                        NewState = (ResourceState)newState,
-                        // RelatedFault 可以根据需要设置
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("机器状态变更消息已发送: {OldState} -> {NewState}",
+                            (ResourceState)oldState, (ResourceState)newState);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("发送机器状态变更消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("机器状态变更消息已发送: {OldState} -> {NewState}",
-                        oldState, newState);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "发送机器状态变更消息时发生错误");
+                    _logger.LogError(ex, "发送机器状态变更消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -673,48 +671,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid txId = Guid.Parse(transactionId);
+                    string jsonSend;
+                    bool success = _dllHelper.reconnectWorkStarted(timeStamp, transactionId, lane, primaryIdentifier, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new WorkStarted
+                    if (success)
                     {
-                        Lane = lane,
-                        PrimaryIdentifier = primaryIdentifier,
-                        HermesIdentifier = null,
-                        TransactionID = txId,
-                        UnitCount = null,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-                    envelope.TimeStamp = GetDateTimeFromStr(timeStamp);
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("重新连接 - 工作开始消息已发送: TransactionID={TransactionId}", transactionId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("重新连接 - 发送工作开始消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("重新连接 - 工作开始消息已发送: TransactionID={TransactionId}", transactionId);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "重新连接 - 发送工作开始消息时发生错误");
+                    _logger.LogError(ex, "重新连接 - 发送工作开始消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -731,48 +713,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid txId = Guid.Parse(transactionId);
+                    string jsonSend;
+                    bool success = _dllHelper.reconnectWorkCompleted(timeStamp, transactionId, result, primaryIdentifier, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new WorkCompleted
+                    if (success)
                     {
-                        PrimaryIdentifier = primaryIdentifier,
-                        HermesIdentifier = null,
-                        TransactionID = txId,
-                        UnitCount = null,
-                        Result = (WorkResult)result,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-                    envelope.TimeStamp = GetDateTimeFromStr(timeStamp);
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("重新连接 - 工作完成消息已发送: TransactionID={TransactionId}", transactionId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("重新连接 - 发送工作完成消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("重新连接 - 工作完成消息已发送: TransactionID={TransactionId}", transactionId);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "重新连接 - 发送工作完成消息时发生错误");
+                    _logger.LogError(ex, "重新连接 - 发送工作完成消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -790,47 +756,32 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    Guid txId = Guid.Parse(transactionId);
+                    string jsonSend;
+                    bool success = _dllHelper.reconnectUnitsProcessed(timeStamp, transactionId, overallResult, recipeName, commonProcessData, out jsonSend);
+                    _isBeat = success;
 
-                    CFXEnvelope envelope = new CFXEnvelope(new UnitsProcessed
+                    if (success)
                     {
-                        OverallResult = (ProcessingResult)overallResult,
-                        TransactionId = txId,
-                        RecipeName = recipeName,
-                        CommonProcessData = commonProcessData,
-                        Metadata = _metadata
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-                    envelope.TimeStamp = GetDateTimeFromStr(timeStamp);
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("重新连接 - 单元处理消息已发送: TransactionID={TransactionId}", transactionId);
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("重新连接 - 发送单元处理消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("重新连接 - 单元处理消息已发送: TransactionID={TransactionId}", transactionId);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "重新连接 - 发送单元处理消息时发生错误");
+                    _logger.LogError(ex, "重新连接 - 发送单元处理消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
@@ -848,62 +799,69 @@ namespace Flex.Csv2Cfx.Services
         {
             return await Task.Run(() =>
             {
-                string jsonSend = "";
-
-                if (!IsOpen)
+                if (_dllHelper == null || !IsOpen)
                 {
-                    jsonSend = GetConnectionErrors();
-                    return (false, jsonSend);
+                    string errorMsg = GetConnectionErrors();
+                    return (false, errorMsg);
                 }
 
                 try
                 {
-                    CFXEnvelope envelope = new CFXEnvelope(new StationStateChanged
+                    string jsonSend;
+                    bool success = _dllHelper.reconnectStationStateChanged(timeStamp, oldState, oldStateDuration, newState, relatedFault, out jsonSend);
+                    _isBeat = success;
+
+                    if (success)
                     {
-                        OldState = (ResourceState)oldState,
-                        OldStateDuration = TimeSpan.Parse(oldStateDuration),
-                        NewState = (ResourceState)newState
-                    });
-
-                    envelope.Source = _uniqueId;
-                    envelope.UniqueID = _uniqueId;
-                    envelope.TimeStamp = GetDateTimeFromStr(timeStamp);
-
-                    _myEndpoint!.Publish(envelope);
-
-                    jsonSend = envelope.ToJson(formatted: true);
-
-                    if (_beatMsg != null && _beatMsg.Count > 0)
+                        _logger.LogInformation("重新连接 - 机器状态变更消息已发送");
+                    }
+                    else
                     {
-                        jsonSend = string.Join(",", _beatMsg);
+                        _logger.LogWarning("重新连接 - 发送机器状态变更消息失败: {Error}", jsonSend);
                     }
 
-                    _logger.LogInformation("重新连接 - 机器状态变更消息已发送: {OldState} -> {NewState}",
-                        oldState, newState);
-
-                    return (_isBeat, jsonSend);
+                    return (success, jsonSend);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "重新连接 - 发送机器状态变更消息时发生错误");
+                    _logger.LogError(ex, "重新连接 - 发送机器状态变更消息时发生异常");
                     return (false, $"错误: {ex.Message}");
                 }
             });
         }
 
         /// <summary>
-        /// 关闭终端
+        /// 关闭终端和队列管理连接
         /// </summary>
         public void CloseEndpoint()
         {
             try
             {
-                if (_myEndpoint != null)
+                // 关闭 dllHelper
+                if (_dllHelper != null)
                 {
-                    _myEndpoint.OnConnectionEvent -= State_OnConnectionEvent;
-                    _myEndpoint.Close();
-                    _myEndpoint = null;
+                    _dllHelper.CloseEndpoint();
+                    _dllHelper = null;
+                    _isBeat = false;
+                    _beatMsg = null;
                     _logger.LogInformation("AMQP 终端已关闭");
+                }
+
+                // ✅ 关闭队列管理连接
+                if (_queueManagementChannel != null)
+                {
+                    _queueManagementChannel.CloseAsync().Wait(TimeSpan.FromSeconds(5));
+                    _queueManagementChannel.Dispose();
+                    _queueManagementChannel = null;
+                    _logger.LogDebug("队列管理通道已关闭");
+                }
+
+                if (_queueManagementConnection != null)
+                {
+                    _queueManagementConnection.CloseAsync().Wait(TimeSpan.FromSeconds(5));
+                    _queueManagementConnection.Dispose();
+                    _queueManagementConnection = null;
+                    _logger.LogDebug("队列管理连接已关闭");
                 }
             }
             catch (Exception ex)
