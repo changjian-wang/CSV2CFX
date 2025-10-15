@@ -5,58 +5,49 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
-using System.Transactions;
-using System.Xml;
+
+// 使用别名解决冲突
+using SystemIO = System.IO;
 
 namespace Flex.Csv2Cfx.Services
 {
-    public class MachineService(IConfigurationService configuration, ILogger<MachineService> logger) : IMachineService
+    public class MachineService : IMachineService
     {
-        private readonly IConfigurationService _configuration = configuration;
-        private readonly ILogger _logger = logger;
+        private readonly IConfigurationService _configuration;
+        private readonly ILogger _logger;
+        private readonly AppSettings _settings;
+
+        public MachineService(IConfigurationService configuration, ILogger<MachineService> logger)
+        {
+            _configuration = configuration;
+            _logger = logger;
+            _settings = _configuration.GetSettings();
+        }
 
         /// <summary>
-        /// Heartbeat消息
+        /// Heartbeat消息 - 保持原有格式
         /// </summary>
-        /// <returns></returns>
         public Dictionary<string, dynamic?> GetHeartbeat()
         {
-            var settings = _configuration.GetSettings();
-
             var body = new Dictionary<string, dynamic?>
             {
-                ["$type"] = $"{settings.MachineSettings.Cfx.Heartbeat}, CFX",
-                ["CFXHandle"] = Guid.NewGuid().ToString(),
-                ["HeartbeatFrequency"] = settings.MachineSettings.Cfx.HeartbeatFrequency,
+                ["$type"] = $"{_settings.MachineSettings.Cfx.Heartbeat}, CFX",
+                ["CFXHandle"] = _settings.MachineSettings.Cfx.UniqueId,
+                ["HeartbeatFrequency"] = _settings.MachineSettings.Cfx.HeartbeatFrequency,
                 ["ActiveFaults"] = 0,
                 ["ActiveRecipes"] = Array.Empty<object>(),
-                ["Metadata"] = new Dictionary<string, string>
-                {
-                    ["building"] = settings.MachineSettings.Metadata.Building ?? "",
-                    ["device"] = settings.MachineSettings.Metadata.Device ?? "",
-                    ["area_name"] = settings.MachineSettings.Metadata.AreaName ?? "",
-                    ["org"] = settings.MachineSettings.Metadata.Organization ?? "",
-                    ["line_name"] = settings.MachineSettings.Metadata.LineName ?? "",
-                    ["site_name"] = settings.MachineSettings.Metadata.SiteName ?? "",
-                    ["station_name"] = settings.MachineSettings.Metadata.StationName ?? "",
-                    ["Process_type"] = settings.MachineSettings.Metadata.ProcessType ?? "",
-                    ["machine_name"] = settings.MachineSettings.Metadata.MachineName ?? "",
-                    ["Created_by"] = settings.MachineSettings.Metadata.CreatedBy ?? "",
-                }
+                ["Metadata"] = CreateMetadataDictionary(_settings)
             };
 
             var json = new Dictionary<string, dynamic?>
             {
-                ["MessageName"] = settings.MachineSettings.Cfx.Heartbeat,
-                ["Version"] = settings.MachineSettings.Cfx.Version,
+                ["MessageName"] = _settings.MachineSettings.Cfx.Heartbeat,
+                ["Version"] = _settings.MachineSettings.Cfx.Version,
                 ["TimeStamp"] = DateTime.UtcNow.FormatDateTimeToIso8601(0),
-                ["UniqueID"] = settings.MachineSettings.Cfx.UniqueId,
-                ["Source"] = settings.MachineSettings.Cfx.UniqueId,
+                ["UniqueID"] = _settings.MachineSettings.Cfx.UniqueId,
+                ["Source"] = _settings.MachineSettings.Cfx.UniqueId,
                 ["Target"] = null,
                 ["RequestID"] = Guid.NewGuid().ToString(),
                 ["MessageBody"] = body
@@ -66,33 +57,29 @@ namespace Flex.Csv2Cfx.Services
         }
 
         /// <summary>
-        /// WorkProcess消息
+        /// WorkProcess消息 - 保持原有格式
         /// </summary>
-        /// <returns></returns>
         public async Task<List<Dictionary<string, dynamic?>>> GetWorkProcessesAsync()
         {
-            var settings = _configuration.GetSettings();
             var workProcesses = new List<Dictionary<string, dynamic?>>();
-
-            // Populate workProcesses with relevant data
-            var filePath = settings.MachineSettings.Csv.ProductionInformationFilePath ?? "";
+            var filePath = _settings.MachineSettings.Csv.ProductionInformationFilePath ?? "";
             var copyFilePath = $"{filePath}.backup.csv";
 
-            if (!File.Exists(filePath) && !File.Exists(copyFilePath))
+            if (!SystemIO.File.Exists(filePath) && !SystemIO.File.Exists(copyFilePath))
             {
                 _logger.LogDebug("生产信息文件不存在: {FilePath}", filePath);
                 return new List<Dictionary<string, dynamic?>>();
             }
 
-            if (!File.Exists(copyFilePath))
+            if (!SystemIO.File.Exists(copyFilePath))
             {
-                File.Copy(filePath, copyFilePath, true);
-                File.Delete(filePath);
+                SystemIO.File.Copy(filePath, copyFilePath, true);
+                SystemIO.File.Delete(filePath);
                 _logger.LogDebug("已创建备份文件: {CopyFilePath}", copyFilePath);
             }
 
             filePath = copyFilePath;
-            var lines = await File.ReadAllLinesAsync(filePath);
+            var lines = await SystemIO.File.ReadAllLinesAsync(filePath);
 
             try
             {
@@ -118,16 +105,16 @@ namespace Flex.Csv2Cfx.Services
                     };
 
                     var transactionID = Guid.NewGuid().ToString();
-                    var uniqueId = settings.MachineSettings.Cfx.UniqueId;
+                    var uniqueId = _settings.MachineSettings.Cfx.UniqueId;
 
                     // workstarted
-                    workProcesses.Add(GetWorkStarted(settings, production, transactionID, uniqueId));
+                    workProcesses.Add(GetWorkStarted(_settings, production, transactionID, uniqueId));
 
                     // unitsprocessed
-                    workProcesses.Add(await GetUnitsProcessedAsync(settings, production, transactionID, uniqueId).ConfigureAwait(false));
+                    workProcesses.Add(await GetUnitsProcessedAsync(_settings, production, transactionID, uniqueId).ConfigureAwait(false));
 
                     // workcompleted
-                    workProcesses.Add(GetWorkCompleted(settings, production, transactionID, uniqueId));
+                    workProcesses.Add(GetWorkCompleted(_settings, production, transactionID, uniqueId));
                 }
 
                 _logger.LogInformation("生产信息文件处理完成");
@@ -139,9 +126,9 @@ namespace Flex.Csv2Cfx.Services
             }
             finally
             {
-                if (File.Exists(filePath))
+                if (SystemIO.File.Exists(filePath))
                 {
-                    File.Delete(filePath);
+                    SystemIO.File.Delete(filePath);
                     _logger.LogDebug($"已删除备份文件: {filePath}");
                 }
                 await Task.Delay(5000).ConfigureAwait(false);
@@ -153,30 +140,27 @@ namespace Flex.Csv2Cfx.Services
         /// <summary>
         /// MachineState
         /// </summary>
-        /// <param name="settings"></param>
-        /// <returns></returns>
         public async Task<List<Dictionary<string, dynamic?>>> GetMachineStateAsync()
         {
-            var settings = _configuration.GetSettings();
             var machineStates = new List<Dictionary<string, dynamic?>>();
-            var filePath = settings.MachineSettings.Csv.MachineStatusInformationFilePath ?? "";
+            var filePath = _settings.MachineSettings.Csv.MachineStatusInformationFilePath ?? "";
             var copyFilePath = $"{filePath}.backup.csv";
 
-            if (!File.Exists(filePath) && !File.Exists(copyFilePath))
+            if (!SystemIO.File.Exists(filePath) && !SystemIO.File.Exists(copyFilePath))
             {
                 _logger.LogDebug("机器状态信息文件不存在: {FilePath}", filePath);
                 return new List<Dictionary<string, dynamic?>>();
             }
 
-            if (!File.Exists(copyFilePath))
+            if (!SystemIO.File.Exists(copyFilePath))
             {
-                File.Copy(filePath, copyFilePath, true);
-                File.Delete(filePath);
+                SystemIO.File.Copy(filePath, copyFilePath, true);
+                SystemIO.File.Delete(filePath);
             }
 
             filePath = copyFilePath;
 
-            var lines = await File.ReadAllLinesAsync(filePath);
+            var lines = await SystemIO.File.ReadAllLinesAsync(filePath);
             var list = new List<MachineStatus>();
 
             try
@@ -214,12 +198,12 @@ namespace Flex.Csv2Cfx.Services
 
                 var lastError = list[lastErrorIndex];
                 var guid = Guid.NewGuid().ToString();
-                var uniqueId = settings.MachineSettings.Cfx.UniqueId;
+                var uniqueId = _settings.MachineSettings.Cfx.UniqueId;
 
                 var faultOccurredJson = new Dictionary<string, dynamic?>
                 {
-                    ["MessageName"] = settings.MachineSettings.Cfx.FaultOccurred,
-                    ["Version"] = settings.MachineSettings.Cfx.Version,
+                    ["MessageName"] = _settings.MachineSettings.Cfx.FaultOccurred,
+                    ["Version"] = _settings.MachineSettings.Cfx.Version,
                     ["TimeStamp"] = Convert.ToDateTime(lastError.OPTime).FormatDateTimeToIso8601(8),
                     ["UniqueID"] = uniqueId,
                     ["Source"] = uniqueId,
@@ -227,7 +211,7 @@ namespace Flex.Csv2Cfx.Services
                     ["RequestID"] = null,
                     ["MessageBody"] = new Dictionary<string, dynamic?>
                     {
-                        ["$type"] = $"{settings.MachineSettings.Cfx.FaultOccurred}, CFX",
+                        ["$type"] = $"{_settings.MachineSettings.Cfx.FaultOccurred}, CFX",
                         ["Fault"] = new Dictionary<string, dynamic?>
                         {
                             ["TransactionID"] = guid,
@@ -252,25 +236,24 @@ namespace Flex.Csv2Cfx.Services
                             ["OccurredAt"] = Convert.ToDateTime(lastError.OPTime).FormatDateTimeToIso8601(8),
                             ["DueDateTime"] = null
                         },
-                        ["Metadata"] = CreateMetadataDictionary(settings)
+                        ["Metadata"] = CreateMetadataDictionary(_settings)
                     }
                 };
 
-                // faultOccurredJson
                 machineStates.Add(faultOccurredJson);
 
                 // faultcleared
                 if (list.Count - 1 == lastErrorIndex)
                 {
                     _logger.LogDebug("没有后续的故障清除记录");
-                    return new List<Dictionary<string, dynamic?>>();
+                    return machineStates;
                 }
 
                 var lastClearErrorOPTime = list[lastErrorIndex + 1].OPTime;
                 var faultClearedJson = new Dictionary<string, dynamic?>
                 {
-                    ["MessageName"] = settings.MachineSettings.Cfx.FaultCleared,
-                    ["Version"] = settings.MachineSettings.Cfx.Version,
+                    ["MessageName"] = _settings.MachineSettings.Cfx.FaultCleared,
+                    ["Version"] = _settings.MachineSettings.Cfx.Version,
                     ["TimeStamp"] = Convert.ToDateTime(lastClearErrorOPTime).FormatDateTimeToIso8601(8),
                     ["UniqueID"] = uniqueId,
                     ["Source"] = uniqueId,
@@ -288,11 +271,10 @@ namespace Flex.Csv2Cfx.Services
                             ["FirstName"] = "",
                             ["LogingName"] = ""
                         },
-                        ["Metadata"] = CreateMetadataDictionary(settings)
+                        ["Metadata"] = CreateMetadataDictionary(_settings)
                     }
                 };
 
-                // faultcleared
                 machineStates.Add(faultClearedJson);
 
                 // StationStateChanged
@@ -311,8 +293,8 @@ namespace Flex.Csv2Cfx.Services
 
                     var stationstatechanged_json = new Dictionary<string, dynamic?>
                     {
-                        ["MessageName"] = settings.MachineSettings.Cfx.StationStateChanged,
-                        ["Version"] = settings.MachineSettings.Cfx.Version,
+                        ["MessageName"] = _settings.MachineSettings.Cfx.StationStateChanged,
+                        ["Version"] = _settings.MachineSettings.Cfx.Version,
                         ["TimeStamp"] = Convert.ToDateTime(lastOPTime).FormatDateTimeToIso8601(8),
                         ["UniqueID"] = uniqueId,
                         ["Source"] = uniqueId,
@@ -325,7 +307,7 @@ namespace Flex.Csv2Cfx.Services
                             ["OldStateDuration"] = oldStateDuration,
                             ["NewState"] = newState,
                             ["RelatedFault"] = null,
-                            ["Metadata"] = CreateMetadataDictionary(settings)
+                            ["Metadata"] = CreateMetadataDictionary(_settings)
                         }
                     };
 
@@ -341,9 +323,9 @@ namespace Flex.Csv2Cfx.Services
             }
             finally
             {
-                if (File.Exists(filePath))
+                if (SystemIO.File.Exists(filePath))
                 {
-                    File.Delete(filePath);
+                    SystemIO.File.Delete(filePath);
                 }
                 await Task.Delay(5000).ConfigureAwait(false);
             }
@@ -351,14 +333,7 @@ namespace Flex.Csv2Cfx.Services
             return machineStates;
         }
 
-        /// <summary>
-        /// Work Started消息生成的辅助方法
-        /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="production"></param>
-        /// <param name="transactionID"></param>
-        /// <param name="uniqueId"></param>
-        /// <returns></returns>
+        // 辅助方法保持不变...
         private Dictionary<string, dynamic?> GetWorkStarted(AppSettings settings, Production production, string transactionID, string uniqueId)
         {
             var body = new Dictionary<string, dynamic?>
@@ -388,45 +363,37 @@ namespace Flex.Csv2Cfx.Services
             return json;
         }
 
-        /// <summary>
-        /// UnitsProcessed消息
-        /// </summary>
-        /// <param name="settings"></param>
-        /// <param name="production"></param>
-        /// <param name="transactionID"></param>
-        /// <param name="uniqueId"></param>
-        /// <returns></returns>
         private async Task<Dictionary<string, dynamic?>> GetUnitsProcessedAsync(AppSettings settings, Production production, string transactionID, string uniqueId)
         {
             var directoryPath = settings.MachineSettings.Csv.ProcessDataFilesFilePath ?? "";
-            if (!Directory.Exists(directoryPath))
+            if (!SystemIO.Directory.Exists(directoryPath))
             {
                 _logger.LogWarning("过程数据文件夹不存在: {DirectoryPath}", directoryPath);
                 return new Dictionary<string, dynamic?>();
             }
 
-            var files = Directory.GetFiles(directoryPath, "*.csv");
-            var filePath = files.Where(s => Path.GetFileNameWithoutExtension(s).StartsWith(production.SN ?? "")).FirstOrDefault() ?? "";
+            var files = SystemIO.Directory.GetFiles(directoryPath, "*.csv");
+            var filePath = files.Where(s => SystemIO.Path.GetFileNameWithoutExtension(s).StartsWith(production.SN ?? "")).FirstOrDefault() ?? "";
 
             var copyFilePath = $"{filePath}.backup.csv";
 
-            if (!File.Exists(filePath) && !File.Exists(copyFilePath))
+            if (!SystemIO.File.Exists(filePath) && !SystemIO.File.Exists(copyFilePath))
             {
                 _logger.LogDebug("未找到序列号 {SN} 对应的过程数据文件", production.SN);
                 return new Dictionary<string, dynamic?>();
             }
 
-            if (!File.Exists(copyFilePath))
+            if (!SystemIO.File.Exists(copyFilePath))
             {
-                File.Copy(filePath, copyFilePath, true);
-                File.Delete(filePath);
+                SystemIO.File.Copy(filePath, copyFilePath, true);
+                SystemIO.File.Delete(filePath);
             }
 
             filePath = copyFilePath;
 
             try
             {
-                var lines = await File.ReadAllLinesAsync(filePath, encoding: System.Text.Encoding.UTF8);
+                var lines = await SystemIO.File.ReadAllLinesAsync(filePath, encoding: System.Text.Encoding.UTF8);
                 var list = lines.Where(s => IsValidDateTime(s.Split(',')[0]));
                 var personalizedUnits = new List<PersonalizedUnit>();
                 var names = lines[1].Split(',');
@@ -498,18 +465,13 @@ namespace Flex.Csv2Cfx.Services
             }
             finally
             {
-                if (File.Exists(filePath))
+                if (SystemIO.File.Exists(filePath))
                 {
-                    File.Delete(filePath);
+                    SystemIO.File.Delete(filePath);
                 }
                 await Task.Delay(5000).ConfigureAwait(false);
             }
         }
-
-        /// <summary>
-        /// WorkCompleted消息
-        /// </summary>
-        /// <returns></returns>
 
         private Dictionary<string, dynamic?> GetWorkCompleted(AppSettings settings, Production production, string transactionID, string uniqueId)
         {
@@ -563,8 +525,6 @@ namespace Flex.Csv2Cfx.Services
 
         private bool IsValidDateTime(string dateTimeString)
         {
-            // 尝试解析日期时间字符串
-            // 支持多种格式，包括 "yyyy/M/d H:mm", "yyyy/M/d H:m", "yyyy/M/d H:mm:ss" 等
             string[] formats = {
                 "yyyy/M/d H:mm",
                 "yyyy/M/d H:m",
