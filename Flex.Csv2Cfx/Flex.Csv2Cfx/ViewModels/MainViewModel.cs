@@ -5,7 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,22 +23,20 @@ namespace Flex.Csv2Cfx.ViewModels
         private readonly IMessageService _messageService;
         private readonly IMachineService _machineService;
         private readonly IConfigurationService _configurationService;
-        private readonly ICfxAmqpService _cfxAmqpService;
         private readonly ILogger<MainViewModel> _logger;
 
         private string _connectionStatus = "未连接";
+        private const string QUEUE_NAME = "ipc-cfx";
         private ObservableCollection<Message> _sentMessages = new();
         private int _successCount = 0;
         private int _failCount = 0;
         private bool _isServiceRunning = false;
         private CancellationTokenSource? _serviceCancellationTokenSource;
         private Timer? _heartbeatTimer;
-        // ✅ JSON 序列化选项 - 防止特殊字符被编码
-        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        private readonly JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions
         {
             WriteIndented = false,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            PropertyNamingPolicy = null
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
         public ObservableCollection<NavigationItem> MenuItems { get; }
@@ -53,26 +54,34 @@ namespace Flex.Csv2Cfx.ViewModels
             get => _selectedProtocol;
             set
             {
+                // 保存旧值
                 var oldValue = _selectedProtocol;
 
+                // 如果服务正在运行，阻止切换并提示用户
                 if (IsServiceRunning && oldValue != value)
                 {
+                    // 显示提示对话框
                     MessageBox.Show(
                         "无法在服务运行时切换协议。\n请先停止服务，然后再切换协议。",
                         "提示",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
 
+                    // 强制恢复到旧值，触发UI更新
                     OnPropertyChanged(nameof(SelectedProtocol));
                     return;
                 }
 
+                // 只有在值真正改变时才更新
                 if (SetProperty(ref _selectedProtocol, value))
                 {
                     _messageService.SetProtocol(value);
                     OnPropertyChanged(nameof(ProtocolDisplayText));
                     _logger.LogInformation("协议已切换为: {Protocol}", value);
                     AddSystemMessage("系统", $"协议已切换为: {value}");
+
+                    // 自动重新连接以应用新协议
+                    _ = ReconnectAfterProtocolChangeAsync();
                 }
             }
         }
@@ -130,7 +139,6 @@ namespace Flex.Csv2Cfx.ViewModels
             IMessageService messageService,
             IMachineService machineService,
             IConfigurationService configurationService,
-            ICfxAmqpService cfxAmqpService,
             ILogger<MainViewModel> logger)
         {
             _pageService = pageService;
@@ -138,7 +146,6 @@ namespace Flex.Csv2Cfx.ViewModels
             _messageService = messageService;
             _machineService = machineService;
             _configurationService = configurationService;
-            _cfxAmqpService = cfxAmqpService;
             _logger = logger;
 
             MenuItems = new ObservableCollection<NavigationItem>(_pageService.GetNavigationItems(CurrentUser));
@@ -149,63 +156,70 @@ namespace Flex.Csv2Cfx.ViewModels
             OpenSettingsCommand = new RelayCommand(ExecuteOpenSettings);
             ToggleServiceCommand = new RelayCommand(async _ => await ExecuteToggleServiceAsync());
 
+            // 加载协议设置
             var settings = _configurationService.GetSettings();
             _selectedProtocol = settings.PreferredProtocol;
             _messageService.SetProtocol(_selectedProtocol);
 
+            // 初始化消息服务连接
             _ = InitializeMessageServiceAsync();
         }
 
         private async Task InitializeMessageServiceAsync()
         {
-            ConnectionStatus = "连接中...";
-
             try
             {
-                bool connected = false;
+                ConnectionStatus = "连接中...";
+                AddSystemMessage("系统", $"正在使用 {SelectedProtocol} 协议连接...");
 
-                if (SelectedProtocol == MessageProtocol.AMQP)
-                {
-                    // AMQP 模式：使用 CfxAmqpService
-                    var (success, message) = await _cfxAmqpService.OpenEndpointTopicAsync();
-                    connected = success;
-
-                    if (connected)
-                    {
-                        _logger.LogInformation("AMQP 服务连接成功");
-                    }
-                    else
-                    {
-                        _logger.LogWarning("AMQP 服务连接失败: {Message}", message);
-                    }
-                }
-                else if (SelectedProtocol == MessageProtocol.MQTT)
-                {
-                    // MQTT 模式：使用 MessageService
-                    connected = await _messageService.ConnectAsync();
-
-                    if (connected)
-                    {
-                        _logger.LogInformation("MQTT 服务连接成功");
-                    }
-                    else
-                    {
-                        _logger.LogWarning("MQTT 服务连接失败");
-                    }
-                }
-
-                ConnectionStatus = connected ? "已连接" : "连接失败";
+                var connected = await _messageService.ConnectAsync();
 
                 if (connected)
                 {
+                    ConnectionStatus = $"已连接 ({SelectedProtocol})";
+                    AddSystemMessage("系统", $"{SelectedProtocol} 协议连接成功");
                     await RefreshMessagesAsync();
+                }
+                else
+                {
+                    ConnectionStatus = "连接失败";
+                    AddSystemMessage("系统", $"{SelectedProtocol} 协议连接失败");
+
+                    MessageBox.Show(
+                        $"使用 {SelectedProtocol} 协议连接失败。\n请检查配置或尝试切换协议。",
+                        "连接失败",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "初始化消息服务时发生错误");
+                _logger.LogError(ex, "初始化消息服务失败");
                 ConnectionStatus = "连接错误";
-                AddSystemMessage("系统", $"初始化失败: {ex.Message}");
+                AddSystemMessage("系统", $"连接错误: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 协议切换后自动重新连接
+        /// </summary>
+        private async Task ReconnectAfterProtocolChangeAsync()
+        {
+            try
+            {
+                AddSystemMessage("系统", $"协议已切换为 {SelectedProtocol}，正在重新连接...");
+
+                // 断开当前连接
+                _messageService.Disconnect();
+                await Task.Delay(500); // 给一点时间让连接完全关闭
+
+                // 使用新协议重新连接
+                await InitializeMessageServiceAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "协议切换后重新连接失败");
+                AddSystemMessage("系统", $"重新连接失败: {ex.Message}");
             }
         }
 
@@ -233,51 +247,19 @@ namespace Flex.Csv2Cfx.ViewModels
         {
             try
             {
-                // 根据协议类型进行不同的连接处理
-                if (SelectedProtocol == MessageProtocol.AMQP)
+                if (!_messageService.IsConnected)
                 {
-                    // AMQP 模式：使用 CfxAmqpService
-                    if (!_cfxAmqpService.IsConnected)
+                    AddSystemMessage("系统", "消息服务未连接，正在重新连接...");
+                    var connected = await _messageService.ConnectAsync();
+                    if (!connected)
                     {
-                        AddSystemMessage("系统", "正在连接 AMQP 服务...");
-                        var (success, message) = await _cfxAmqpService.OpenEndpointTopicAsync();
-
-                        if (!success)
-                        {
-                            AddSystemMessage("系统", $"AMQP 连接失败: {message}");
-                            MessageBox.Show(
-                                $"AMQP 连接失败：\n{message}\n\n请检查 RabbitMQ 配置并重试。",
-                                "错误",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Error);
-                            return;
-                        }
-
-                        AddSystemMessage("系统", "AMQP 连接成功");
-                        ConnectionStatus = "已连接";
-                    }
-                }
-                else if (SelectedProtocol == MessageProtocol.MQTT)
-                {
-                    // MQTT 模式：使用 MessageService
-                    if (!_messageService.IsConnected)
-                    {
-                        AddSystemMessage("系统", "正在连接 MQTT 服务...");
-                        var connected = await _messageService.ConnectAsync();
-
-                        if (!connected)
-                        {
-                            AddSystemMessage("系统", "MQTT 连接失败");
-                            MessageBox.Show(
-                                "MQTT 连接失败，无法启动服务。\n请检查配置并重试。",
-                                "错误",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Error);
-                            return;
-                        }
-
-                        AddSystemMessage("系统", "MQTT 连接成功");
-                        ConnectionStatus = "已连接";
+                        AddSystemMessage("系统", "消息服务连接失败，无法启动服务");
+                        MessageBox.Show(
+                            $"使用 {SelectedProtocol} 协议连接失败，无法启动服务。\n请检查配置或尝试切换协议后重试。",
+                            "错误",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                        return;
                     }
                 }
 
@@ -286,25 +268,21 @@ namespace Flex.Csv2Cfx.ViewModels
 
                 AddSystemMessage("系统", $"服务启动成功 (协议: {SelectedProtocol})");
 
+                // 获取配置并启动心跳定时器
                 var settings = _configurationService.GetSettings();
                 var heartbeatFrequency = settings.MachineSettings.Cfx.HeartbeatFrequency;
 
-                // 启动心跳定时器 - 使用同步回调
                 _heartbeatTimer = new Timer(
-                    callback: state =>
-                    {
-                        _ = SendHeartbeatAsync();
-                    },
-                    state: null,
-                    dueTime: TimeSpan.Zero,
-                    period: TimeSpan.FromSeconds(heartbeatFrequency));
+                    async _ => await SendHeartbeatAsync(),
+                    null,
+                    TimeSpan.Zero,
+                    TimeSpan.FromSeconds(heartbeatFrequency));
 
-                // 启动后台任务
+                // 启动后台任务处理工作流程和机器状态
                 _ = Task.Run(async () => await ProcessWorkflowAsync(_serviceCancellationTokenSource.Token));
                 _ = Task.Run(async () => await ProcessMachineStateAsync(_serviceCancellationTokenSource.Token));
 
-                _logger.LogInformation("服务已启动 - 协议: {Protocol}, 心跳频率: {Frequency}秒",
-                    SelectedProtocol, heartbeatFrequency);
+                _logger.LogInformation("服务已启动，协议: {Protocol}, 心跳频率: {Frequency}秒", SelectedProtocol, heartbeatFrequency);
             }
             catch (Exception ex)
             {
@@ -324,15 +302,10 @@ namespace Flex.Csv2Cfx.ViewModels
             try
             {
                 _serviceCancellationTokenSource?.Cancel();
+                _heartbeatTimer?.Dispose();
+                _heartbeatTimer = null;
 
-                // 先停止定时器
-                if (_heartbeatTimer != null)
-                {
-                    _heartbeatTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                    _heartbeatTimer.Dispose();
-                    _heartbeatTimer = null;
-                }
-
+                // 等待一小段时间让后台任务完成
                 await Task.Delay(500);
 
                 IsServiceRunning = false;
@@ -347,89 +320,28 @@ namespace Flex.Csv2Cfx.ViewModels
             }
         }
 
-        /// <summary>
-        /// 发送心跳消息 - 根据协议类型使用不同的实现
-        /// </summary>
         private async Task SendHeartbeatAsync()
         {
-            if (!IsServiceRunning)
-                return;
-
             try
             {
-                var settings = _configurationService.GetSettings();
+                var heartbeat = _machineService.GetHeartbeat();
+                var message = JsonSerializer.Serialize(heartbeat, jsonSerializerOptions);
+                var topic = QUEUE_NAME;
 
-                if (SelectedProtocol == MessageProtocol.AMQP)
+                var result = await _messageService.PublishMessageAsync(topic, message);
+
+                if (result.Success)
                 {
-                    // AMQP 模式：使用 CfxAmqpService 直接发送 CFX 格式的心跳
-                    var heartbeatFrequency = settings.MachineSettings.Cfx.HeartbeatFrequency;
-                    var heartbeatTimeSpan = $"00:00:{heartbeatFrequency:D2}"; // "00:00:05"
-
-                    var result = await _cfxAmqpService.SendHeartbeatAsync(
-                        activeFaults: Array.Empty<string>(),
-                        activeRecipes: Array.Empty<string>(),
-                        heartbeatFrequency: heartbeatTimeSpan
-                    );
-
-                    if (result.success)
-                    {
-                        SuccessCount++;
-                        _logger.LogDebug("心跳消息发送成功 (CFX AMQP)");
-
-                        // 添加到消息列表 - 显示简化的内容
-                        AddAmqpMessageToList("Heartbeat", "心跳消息", "成功");
-                    }
-                    else
-                    {
-                        FailCount++;
-                        _logger.LogWarning("心跳消息发送失败: {Json}", result.json);
-
-                        // 添加到消息列表
-                        AddAmqpMessageToList("Heartbeat", result.json, "失败");
-
-                        // 如果连接断开，尝试重连
-                        if (!_cfxAmqpService.IsConnected)
-                        {
-                            _logger.LogWarning("检测到 AMQP 断开，尝试重新连接...");
-                            ConnectionStatus = "重新连接中...";
-                            var (success, message) = await _cfxAmqpService.OpenEndpointTopicAsync();
-                            ConnectionStatus = success ? "已连接" : "连接失败";
-                        }
-                    }
+                    SuccessCount++;
+                    _logger.LogDebug("心跳消息发送成功 (协议: {Protocol})", SelectedProtocol);
                 }
-                else if (SelectedProtocol == MessageProtocol.MQTT)
+                else
                 {
-                    // MQTT 模式：使用 MachineService 生成 JSON 然后通过 MessageService 发送
-                    var heartbeat = _machineService.GetHeartbeat();
-                    var message = JsonSerializer.Serialize(heartbeat, _jsonOptions);
-                    var topic = "ipc-cfx";
-
-                    var result = await _messageService.PublishMessageAsync(topic, message);
-
-                    if (result.Success)
-                    {
-                        SuccessCount++;
-                        _logger.LogDebug("心跳消息发送成功 (MQTT)");
-                    }
-                    else
-                    {
-                        FailCount++;
-                        _logger.LogWarning("心跳消息发送失败: {Message}", result.Message);
-
-                        // 如果 MQTT 连接断开，尝试重连
-                        if (!_messageService.IsConnected)
-                        {
-                            _logger.LogWarning("检测到 MQTT 断开，尝试重新连接...");
-                            ConnectionStatus = "重新连接中...";
-                            var connected = await _messageService.ConnectAsync();
-                            ConnectionStatus = connected ? "已连接" : "连接失败";
-                        }
-                    }
-
-                    // ✅ MQTT 模式下需要刷新消息列表
-                    await RefreshMessagesAsync();
+                    FailCount++;
+                    _logger.LogWarning("心跳消息发送失败 (协议: {Protocol}): {Message}", SelectedProtocol, result.Message);
                 }
 
+                await RefreshMessagesAsync();
                 OnPropertyChanged(nameof(StatsText));
             }
             catch (Exception ex)
@@ -442,7 +354,7 @@ namespace Flex.Csv2Cfx.ViewModels
 
         private async Task ProcessWorkflowAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("工作流程处理任务已启动");
+            _logger.LogInformation("工作流程处理任务已启动 (协议: {Protocol})", SelectedProtocol);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -458,55 +370,28 @@ namespace Flex.Csv2Cfx.ViewModels
                         {
                             if (cancellationToken.IsCancellationRequested) break;
 
-                            var message = JsonSerializer.Serialize(process, _jsonOptions);
-                            var topic = "ipc-cfx";
+                            var message = JsonSerializer.Serialize(process, jsonSerializerOptions);
+                            var topic = QUEUE_NAME;
 
-                            // 根据协议发送
-                            if (SelectedProtocol == MessageProtocol.AMQP)
+                            var result = await _messageService.PublishMessageAsync(topic, message);
+
+                            if (result.Success)
                             {
-                                // AMQP: 使用 CfxAmqpService 发送通用 JSON
-                                var result = await _cfxAmqpService.SendCommonJsonDataAsync(message);
-
-                                if (result.success)
-                                {
-                                    SuccessCount++;
-                                    // 显示消息类型而不是完整 JSON
-                                    var msgName = process.ContainsKey("MessageName") ? process["MessageName"]?.ToString() ?? "Unknown" : "WorkProcess";
-                                    AddAmqpMessageToList(topic, $"{msgName} 消息已发送", "成功");
-                                }
-                                else
-                                {
-                                    FailCount++;
-                                    AddAmqpMessageToList(topic, $"发送失败: {result.json}", "失败");
-                                    _logger.LogWarning("工作流程消息发送失败: {Json}", result.json);
-                                }
+                                SuccessCount++;
                             }
-                            else if (SelectedProtocol == MessageProtocol.MQTT)
+                            else
                             {
-                                // MQTT: 使用 MessageService
-                                var result = await _messageService.PublishMessageAsync(topic, message);
-
-                                if (result.Success)
-                                {
-                                    SuccessCount++;
-                                }
-                                else
-                                {
-                                    FailCount++;
-                                    _logger.LogWarning("工作流程消息发送失败: {Message}", result.Message);
-                                }
+                                FailCount++;
+                                _logger.LogWarning("工作流程消息发送失败: {Message}", result.Message);
                             }
 
                             OnPropertyChanged(nameof(StatsText));
                         }
 
-                        // 只在 MQTT 模式下刷新消息列表
-                        if (SelectedProtocol == MessageProtocol.MQTT)
-                        {
-                            await RefreshMessagesAsync();
-                        }
+                        await RefreshMessagesAsync();
                     }
 
+                    // 等待5秒再检查新文件
                     await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -524,7 +409,7 @@ namespace Flex.Csv2Cfx.ViewModels
 
         private async Task ProcessMachineStateAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("机器状态处理任务已启动");
+            _logger.LogInformation("机器状态处理任务已启动 (协议: {Protocol})", SelectedProtocol);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -540,54 +425,28 @@ namespace Flex.Csv2Cfx.ViewModels
                         {
                             if (cancellationToken.IsCancellationRequested) break;
 
-                            var message = JsonSerializer.Serialize(state, _jsonOptions);
-                            var topic = "ipc-cfx";
+                            var message = JsonSerializer.Serialize(state, jsonSerializerOptions);
+                            var topic = QUEUE_NAME;
 
-                            // 根据协议发送
-                            if (SelectedProtocol == MessageProtocol.AMQP)
+                            var result = await _messageService.PublishMessageAsync(topic, message);
+
+                            if (result.Success)
                             {
-                                // AMQP: 使用 CfxAmqpService 发送通用 JSON
-                                var result = await _cfxAmqpService.SendCommonJsonDataAsync(message);
-
-                                if (result.success)
-                                {
-                                    SuccessCount++;
-                                    var msgName = state.ContainsKey("MessageName") ? state["MessageName"]?.ToString() ?? "Unknown" : "MachineState";
-                                    AddAmqpMessageToList(topic, $"{msgName} 消息已发送", "成功");
-                                }
-                                else
-                                {
-                                    FailCount++;
-                                    AddAmqpMessageToList(topic, $"发送失败: {result.json}", "失败");
-                                    _logger.LogWarning("机器状态消息发送失败: {Json}", result.json);
-                                }
+                                SuccessCount++;
                             }
-                            else if (SelectedProtocol == MessageProtocol.MQTT)
+                            else
                             {
-                                // MQTT: 使用 MessageService
-                                var result = await _messageService.PublishMessageAsync(topic, message);
-
-                                if (result.Success)
-                                {
-                                    SuccessCount++;
-                                }
-                                else
-                                {
-                                    FailCount++;
-                                    _logger.LogWarning("机器状态消息发送失败: {Message}", result.Message);
-                                }
+                                FailCount++;
+                                _logger.LogWarning("机器状态消息发送失败: {Message}", result.Message);
                             }
 
                             OnPropertyChanged(nameof(StatsText));
                         }
 
-                        // 只在 MQTT 模式下刷新消息列表
-                        if (SelectedProtocol == MessageProtocol.MQTT)
-                        {
-                            await RefreshMessagesAsync();
-                        }
+                        await RefreshMessagesAsync();
                     }
 
+                    // 等待5秒再检查新文件
                     await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -624,48 +483,23 @@ namespace Flex.Csv2Cfx.ViewModels
             }
 
             ConnectionStatus = "重新连接中...";
-
-            if (SelectedProtocol == MessageProtocol.AMQP)
-            {
-                _cfxAmqpService.CloseEndpoint();
-            }
-            else if (SelectedProtocol == MessageProtocol.MQTT)
-            {
-                _messageService.Disconnect();
-            }
-
+            AddSystemMessage("系统", $"使用 {SelectedProtocol} 协议重新连接...");
+            _messageService.Disconnect();
+            await Task.Delay(500); // 给一点时间让连接完全关闭
             await InitializeMessageServiceAsync();
         }
 
-        /// <summary>
-        /// 刷新消息列表
-        /// </summary>
         private async Task RefreshMessagesAsync()
         {
-            try
+            var messages = await _messageService.GetRecentSentMessagesAsync();
+            App.Current.Dispatcher.Invoke(() =>
             {
-                if (SelectedProtocol == MessageProtocol.MQTT)
+                SentMessages.Clear();
+                foreach (var msg in messages)
                 {
-                    // MQTT 模式：从 MessageService 获取消息列表
-                    var messages = await _messageService.GetRecentSentMessagesAsync(100);
-
-                    App.Current.Dispatcher.Invoke(() =>
-                    {
-                        SentMessages.Clear();
-                        foreach (var msg in messages)
-                        {
-                            SentMessages.Add(msg);
-                        }
-
-                        _logger.LogDebug("MQTT 消息列表已刷新，共 {Count} 条消息", messages.Count);
-                    });
+                    SentMessages.Add(msg);
                 }
-                // AMQP 模式不需要刷新，因为消息已经实时添加到 SentMessages
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "刷新消息列表时发生错误");
-            }
+            });
         }
 
         private void ExecuteClearMessages(object? parameter = null)
@@ -690,32 +524,6 @@ namespace Flex.Csv2Cfx.ViewModels
             App.Current.Dispatcher.Invoke(() =>
             {
                 SentMessages.Insert(0, message);
-            });
-        }
-
-        /// <summary>
-        /// 添加 AMQP 消息到列表（因为 CfxAmqpService 不使用 MessageService 的消息列表）
-        /// </summary>
-        private void AddAmqpMessageToList(string topic, string content, string status)
-        {
-            var message = new Message
-            {
-                Protocol = "AMQP",
-                Topic = topic,
-                Content = content,
-                Timestamp = DateTime.Now,
-                Status = status
-            };
-
-            App.Current.Dispatcher.Invoke(() =>
-            {
-                SentMessages.Insert(0, message);
-
-                // 限制列表大小
-                if (SentMessages.Count > 1000)
-                {
-                    SentMessages.RemoveAt(SentMessages.Count - 1);
-                }
             });
         }
 

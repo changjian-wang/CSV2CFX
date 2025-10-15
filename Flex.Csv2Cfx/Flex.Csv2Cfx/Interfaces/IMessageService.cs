@@ -15,7 +15,7 @@ namespace Flex.Csv2Cfx.Interfaces
         MessageProtocol CurrentProtocol { get; set; }
 
         Task<bool> ConnectAsync();
-        Task<PublishResult> PublishAmqpMessageAsync(string routingKey, string message);
+        Task<PublishResult> PublishAmqpMessageAsync(string topic, string message);
         Task<PublishResult> PublishMqttMessageAsync(string topic, string message);
         Task<PublishResult> PublishBothAsync(string topic, string message);
         Task<PublishResult> PublishMessageAsync(string topic, string message); // 新增：根据当前协议发送

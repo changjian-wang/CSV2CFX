@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -29,16 +28,12 @@ namespace Flex.Csv2Cfx.Services
         {
             var settings = _configuration.GetSettings();
 
-            // 将 HeartbeatFrequency 从秒转换为 TimeSpan 格式的字符串
-            var heartbeatFrequencySeconds = settings.MachineSettings.Cfx.HeartbeatFrequency;
-
             var body = new Dictionary<string, dynamic?>
             {
                 ["$type"] = $"{settings.MachineSettings.Cfx.Heartbeat}, CFX",
-                ["CFXHandle"] = settings.MachineSettings.Cfx.UniqueId,
-                // 使用 TimeSpan 格式字符串 "00:00:05"
-                ["HeartbeatFrequency"] = $"00:00:{heartbeatFrequencySeconds:D2}",
-                ["ActiveFaults"] = Array.Empty<object>(),
+                ["CFXHandle"] = Guid.NewGuid().ToString(),
+                ["HeartbeatFrequency"] = settings.MachineSettings.Cfx.HeartbeatFrequency,
+                ["ActiveFaults"] = 0,
                 ["ActiveRecipes"] = Array.Empty<object>(),
                 ["Metadata"] = new Dictionary<string, string>
                 {
@@ -51,7 +46,7 @@ namespace Flex.Csv2Cfx.Services
                     ["station_name"] = settings.MachineSettings.Metadata.StationName ?? "",
                     ["Process_type"] = settings.MachineSettings.Metadata.ProcessType ?? "",
                     ["machine_name"] = settings.MachineSettings.Metadata.MachineName ?? "",
-                    ["Created_by"] = settings.MachineSettings.Metadata.CreatedBy ?? "GA",
+                    ["Created_by"] = settings.MachineSettings.Metadata.CreatedBy ?? "",
                 }
             };
 
@@ -63,7 +58,7 @@ namespace Flex.Csv2Cfx.Services
                 ["UniqueID"] = settings.MachineSettings.Cfx.UniqueId,
                 ["Source"] = settings.MachineSettings.Cfx.UniqueId,
                 ["Target"] = null,
-                ["RequestID"] = null,
+                ["RequestID"] = Guid.NewGuid().ToString(),
                 ["MessageBody"] = body
             };
 

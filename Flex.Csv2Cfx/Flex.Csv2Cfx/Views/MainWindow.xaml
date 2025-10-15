@@ -3,11 +3,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:models="clr-namespace:Flex.Csv2Cfx.Models"
+        xmlns:converters="clr-namespace:Flex.Csv2Cfx.Converters"
         Title="CFX 消息服务系统" 
         Height="750" 
         Width="1400"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
+
+    <!-- 添加资源字典 -->
+    <ui:FluentWindow.Resources>
+        <converters:ConnectionStatusToBrushConverter x:Key="StatusToBrushConverter"/>
+        <converters:ServiceStatusToBrushConverter x:Key="ServiceStatusToBrushConverter"/>
+    </ui:FluentWindow.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -45,7 +52,7 @@
                     </StackPanel>
                 </ui:Card>
 
-                <!-- 连接状态卡片 -->
+                <!-- 连接状态卡片 - 使用转换器 -->
                 <ui:Card Margin="0,0,0,15" Padding="15">
                     <StackPanel>
                         <TextBlock Text="连接状态" 
@@ -53,43 +60,21 @@
                                   FontWeight="SemiBold"
                                   Margin="0,0,0,10"/>
 
+                        <!-- 连接状态 - 使用转换器 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
-                                <Ellipse.Style>
-                                    <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="Gray"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="已连接">
-                                                <Setter Property="Fill" Value="#4CAF50"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="连接中">
-                                                <Setter Property="Fill" Value="#FF9800"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="连接失败">
-                                                <Setter Property="Fill" Value="#F44336"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Ellipse.Style>
-                            </Ellipse>
+                            <Ellipse Width="10" Height="10" 
+                                     Fill="{Binding ConnectionStatus, Converter={StaticResource StatusToBrushConverter}}"
+                                     Margin="0,0,8,0"/>
                             <TextBlock Text="{Binding ConnectionStatus}" FontWeight="Medium"/>
                         </StackPanel>
 
                         <Separator Margin="0,8,0,8"/>
 
+                        <!-- 服务状态 - 使用转换器 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
-                                <Ellipse.Style>
-                                    <Style TargetType="Ellipse">
-                                        <Setter Property="Fill" Value="Gray"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
-                                                <Setter Property="Fill" Value="#4CAF50"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Ellipse.Style>
-                            </Ellipse>
+                            <Ellipse Width="10" Height="10" 
+                                     Fill="{Binding IsServiceRunning, Converter={StaticResource ServiceStatusToBrushConverter}}"
+                                     Margin="0,0,8,0"/>
                             <TextBlock Text="{Binding ServiceStatusText}" FontWeight="Medium"/>
                         </StackPanel>
 
@@ -344,6 +329,10 @@
                                                         <DataTrigger Binding="{Binding Status}" Value="成功">
                                                             <Setter Property="Foreground" Value="#4CAF50"/>
                                                             <Setter Property="Text" Value="✓ 发送成功"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="成功 (已编码)">
+                                                            <Setter Property="Foreground" Value="#4CAF50"/>
+                                                            <Setter Property="Text" Value="✓ 发送成功 (已编码)"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="失败">
                                                             <Setter Property="Foreground" Value="#F44336"/>

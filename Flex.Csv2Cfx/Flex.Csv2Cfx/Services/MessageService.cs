@@ -1,84 +1,63 @@
-﻿using Flex.Csv2Cfx.Interfaces;
+﻿using Flex.Csv2Cfx.Extensions;  // 添加这个引用
+using Flex.Csv2Cfx.Interfaces;
 using Flex.Csv2Cfx.Models;
 using MQTTnet;
-using Microsoft.Extensions.Logging;
+using MQTTnet.Channel;
+using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
-using wuz_ipc_cfx_test; // 引用 wuz-ipc-cfx.dll
-using CFX.Structures;
+using System.Xml;
 
 namespace Flex.Csv2Cfx.Services
 {
     public class MessageService : IMessageService, IDisposable
     {
-        private dllHelper? _dllHelper; // 使用 dllHelper 替代原 AMQP 连接
+        private IConnection? _amqpConnection;
+        private IChannel? _amqpChannel;
         private IMqttClient? _mqttClient;
         private readonly IConfigurationService _configuration;
-        private readonly ILogger<MessageService>? _logger;
         private readonly AppSettings _settings;
+        private readonly ConnectionFactory _amqpFactory;
         private readonly MqttClientFactory _mqttFactory;
         private bool _disposed = false;
+        private const string EXCHANGE_NAME = "amq.topic";
+        private const string QUEUE_NAME = "ipc-cfx";
         private readonly List<Message> _sentMessages = new();
-
-        // AMQP 相关配置
-        private Metadata _metadata = new Metadata();
+        private bool _enableEncoding = true;  // 添加编码开关
         private string _uniqueId = "";
-        private string _myCFXHandle = "";
-        private string _cfxEventBroker = "";
-        private string _cfxBrokerExchange = "amq.topic";
-        private string _routingKey = "";
-        private bool _amqpConnected = false;
 
-        public bool IsConnected => _amqpConnected || (_mqttClient?.IsConnected ?? false);
+        public bool IsConnected => (_amqpConnection?.IsOpen ?? false) || (_mqttClient?.IsConnected ?? false);
         public IReadOnlyList<Message> SentMessages => _sentMessages.AsReadOnly();
         public MessageProtocol CurrentProtocol { get; set; }
-
-        public MessageService(IConfigurationService configuration, ILogger<MessageService>? logger = null)
+        public bool EnableEncoding  // 添加属性以便外部控制
         {
-            _configuration = configuration;
-            _logger = logger;
-            _settings = _configuration.GetSettings();
-            CurrentProtocol = _settings.PreferredProtocol;
-
-            // 初始化 MQTT
-            _mqttFactory = new MqttClientFactory();
-            _mqttClient = _mqttFactory.CreateMqttClient();
-
-            // 加载 AMQP 配置
-            LoadAmqpConfiguration();
+            get => _enableEncoding;
+            set => _enableEncoding = value;
         }
 
-        private void LoadAmqpConfiguration()
+        public MessageService(IConfigurationService configuration)
         {
-            var machineMetadata = _settings.MachineSettings.Metadata;
-            var rabbitMq = _settings.RabbitMqSettings;
-            var cfx = _settings.MachineSettings.Cfx;
+            _configuration = configuration;
+            _settings = _configuration.GetSettings();
+            _uniqueId = _settings.MachineSettings.Cfx.UniqueId;
+            CurrentProtocol = _settings.PreferredProtocol;
 
-            // 创建 Metadata
-            _metadata = new Metadata
+            _amqpFactory = new ConnectionFactory()
             {
-                building = machineMetadata.Building ?? "",
-                device = machineMetadata.Device ?? "",
-                area_name = machineMetadata.AreaName ?? "",
-                org = machineMetadata.Organization ?? "",
-                line_name = machineMetadata.LineName ?? "",
-                site_name = machineMetadata.SiteName ?? "",
-                station_name = machineMetadata.StationName ?? "",
-                Process_type = machineMetadata.ProcessType ?? "",
-                machine_name = machineMetadata.MachineName ?? "",
-                Created_by = string.IsNullOrEmpty(machineMetadata.CreatedBy) ? "GA" : machineMetadata.CreatedBy,
-                previus_status = "Running",
-                time_last_status = "00:00:00"
+                HostName = _settings.RabbitMqSettings.HostName,
+                UserName = _settings.RabbitMqSettings.Username,
+                Password = _settings.RabbitMqSettings.Password,
+                VirtualHost = _settings.RabbitMqSettings.VirtualHost,
+                AutomaticRecoveryEnabled = true,
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
             };
 
-            _uniqueId = cfx.UniqueId ?? "";
-            _cfxEventBroker = $"amqp://{rabbitMq.Username}:{rabbitMq.Password}@{rabbitMq.HostName}:5672";
-            _cfxBrokerExchange = "amq.topic";
-            _routingKey = _uniqueId;
-            _myCFXHandle = _routingKey;
+            _mqttFactory = new MqttClientFactory();
+            _mqttClient = _mqttFactory.CreateMqttClient();
         }
 
         public void SetProtocol(MessageProtocol protocol)
@@ -89,253 +68,270 @@ namespace Flex.Csv2Cfx.Services
 
         public async Task<bool> ConnectAsync()
         {
-            return await Task.Run(() =>
+            try
             {
+                bool amqpConnected = false;
+                bool mqttConnected = false;
+
+                // 始终使用 AMQP 创建队列（无论当前协议是什么）
                 try
                 {
-                    bool amqpConnected = false;
-                    bool mqttConnected = false;
+                    var amqpConnection = await _amqpFactory.CreateConnectionAsync();
+                    var amqpChannel = await amqpConnection.CreateChannelAsync();
 
-                    // 连接 AMQP (使用 dllHelper)
+                    // 声明统一的队列
+                    string queueName = QUEUE_NAME;
+
+                    await amqpChannel.QueueDeclareAsync(
+                        queue: queueName,
+                        durable: true,
+                        exclusive: false,
+                        autoDelete: false);
+
+                    // 重要：绑定多个可能的 routing key 格式
+                    // 1. 原始格式（如果 _uniqueId 本身包含 /）
+                    await amqpChannel.QueueBindAsync(
+                        queue: queueName,
+                        exchange: EXCHANGE_NAME,
+                        routingKey: _uniqueId);
+
+                    // 2. MQTT 格式（/ 转换为 .）
+                    string mqttRoutingKey = _uniqueId.Replace("/", ".");
+                    if (mqttRoutingKey != _uniqueId)
+                    {
+                        await amqpChannel.QueueBindAsync(
+                            queue: queueName,
+                            exchange: EXCHANGE_NAME,
+                            routingKey: mqttRoutingKey);
+                    }
+
+                    // 3. 如果需要支持通配符，可以添加：
+                    // await amqpChannel.QueueBindAsync(
+                    //     queue: queueName,
+                    //     exchange: EXCHANGE_NAME,
+                    //     routingKey: "#");  // 匹配所有消息（仅用于调试）
+
+                    AddSystemMessage("系统", $"AMQP队列创建成功，绑定 routing keys: {_uniqueId}, {mqttRoutingKey}");
+
+                    // 如果当前协议是 AMQP，保持连接；否则关闭
                     if (CurrentProtocol == MessageProtocol.AMQP)
                     {
-                        try
-                        {
-                            // 关闭现有连接
-                            if (_dllHelper != null)
-                            {
-                                _dllHelper.CloseEndpoint();
-                                _dllHelper = null;
-                            }
-
-                            // 创建新的 dllHelper 实例
-                            _dllHelper = new dllHelper(
-                                _cfxEventBroker,
-                                _cfxBrokerExchange,
-                                _routingKey,
-                                _myCFXHandle,
-                                _metadata,
-                                _uniqueId);
-
-                            string msg;
-                            _dllHelper.OpenEndpointTopic(out msg);
-
-                            if (msg.StartsWith("ERROR"))
-                            {
-                                _logger?.LogError("AMQP 连接失败: {Message}", msg);
-                                AddSystemMessage("系统", $"AMQP连接失败: {msg}");
-                                amqpConnected = false;
-                            }
-                            else
-                            {
-                                amqpConnected = true;
-                                _amqpConnected = true;
-                                _logger?.LogInformation("AMQP 连接成功");
-                                AddSystemMessage("系统", "AMQP连接成功");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "AMQP 连接异常");
-                            AddSystemMessage("系统", $"AMQP连接失败: {ex.Message}");
-                            amqpConnected = false;
-                        }
+                        _amqpConnection = amqpConnection;
+                        _amqpChannel = amqpChannel;
+                        amqpConnected = true;
+                        AddSystemMessage("系统", "AMQP连接成功");
                     }
-
-                    // 连接 MQTT
-                    if (CurrentProtocol == MessageProtocol.MQTT)
+                    else
                     {
-                        try
-                        {
-                            var mqttOptions = new MqttClientOptionsBuilder()
-                                .WithTcpServer(_settings.MqttSettings.Server, _settings.MqttSettings.Port)
-                                .WithCredentials(_settings.MqttSettings.Username, _settings.MqttSettings.Password)
-                                .WithClientId($"{_settings.MqttSettings.ClientIdPrefix}-{Guid.NewGuid()}")
-                                .WithCleanSession()
-                                .Build();
-
-                            var connectResult = _mqttClient!.ConnectAsync(mqttOptions, CancellationToken.None).Result;
-
-                            if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
-                            {
-                                mqttConnected = true;
-                                _logger?.LogInformation("MQTT 连接成功");
-                                AddSystemMessage("系统", "MQTT连接成功");
-                            }
-                            else
-                            {
-                                _logger?.LogWarning("MQTT 连接失败: {ResultCode}", connectResult.ResultCode);
-                                AddSystemMessage("系统", $"MQTT连接失败，结果代码: {connectResult.ResultCode}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogError(ex, "MQTT 连接异常");
-                            AddSystemMessage("系统", $"MQTT连接失败: {ex.Message}");
-                        }
+                        // 队列创建完成后关闭 AMQP 连接
+                        await amqpChannel.CloseAsync();
+                        await amqpConnection.CloseAsync();
+                        AddSystemMessage("系统", "AMQP队列创建完成，连接已关闭");
                     }
-
-                    bool connected = (CurrentProtocol == MessageProtocol.AMQP && amqpConnected) ||
-                                   (CurrentProtocol == MessageProtocol.MQTT && mqttConnected);
-
-                    if (connected)
-                    {
-                        AddSystemMessage("系统", "消息服务连接成功");
-                    }
-
-                    return connected;
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "连接消息服务失败");
-                    AddSystemMessage("系统", $"连接消息服务失败: {ex.Message}");
-                    return false;
+                    AddSystemMessage("系统", $"AMQP队列创建失败: {ex.Message}");
+
+                    // 如果当前协议是 AMQP，这是一个致命错误
+                    if (CurrentProtocol == MessageProtocol.AMQP)
+                    {
+                        return false;
+                    }
                 }
-            });
+
+                // 连接MQTT (如果需要)
+                if (CurrentProtocol == MessageProtocol.MQTT)
+                {
+                    try
+                    {
+                        var mqttOptions = new MqttClientOptionsBuilder()
+                            .WithTcpServer(_settings.MqttSettings.Server, _settings.MqttSettings.Port)
+                            .WithCredentials(_settings.MqttSettings.Username, _settings.MqttSettings.Password)
+                            .WithClientId($"{_settings.MqttSettings.ClientIdPrefix}-{Environment.MachineName}")
+                            .WithCleanSession(false)
+                            .Build();
+
+                        var connectResult = await _mqttClient!.ConnectAsync(mqttOptions, CancellationToken.None);
+
+                        if (connectResult.ResultCode == MqttClientConnectResultCode.Success)
+                        {
+                            // MQTT 订阅使用原始格式（保持 / 分隔符）
+                            // RabbitMQ MQTT 插件会自动将其转换为 . 用于路由
+                            string mqttTopic = _uniqueId;  // 保持原始格式
+
+                            var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
+                                .WithTopicFilter(f =>
+                                {
+                                    f.WithTopic(mqttTopic);
+                                    f.WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce);
+                                })
+                                .Build();
+
+                            var subscribeResult = await _mqttClient.SubscribeAsync(subscribeOptions, CancellationToken.None);
+
+                            AddSystemMessage("系统", $"MQTT订阅主题成功: {mqttTopic}");
+
+                            mqttConnected = true;
+                            AddSystemMessage("系统", "MQTT连接成功");
+                        }
+                        else
+                        {
+                            AddSystemMessage("系统", $"MQTT连接失败，结果代码: {connectResult.ResultCode}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddSystemMessage("系统", $"MQTT连接失败: {ex.Message}");
+                    }
+                }
+
+                bool connected = (CurrentProtocol == MessageProtocol.AMQP && amqpConnected) ||
+                               (CurrentProtocol == MessageProtocol.MQTT && mqttConnected) ||
+                               (amqpConnected || mqttConnected);
+
+                if (connected)
+                {
+                    AddSystemMessage("系统", "消息服务连接成功");
+                }
+
+                return connected;
+            }
+            catch (Exception ex)
+            {
+                AddSystemMessage("系统", $"连接消息服务失败: {ex.Message}");
+                return false;
+            }
         }
 
-        /// <summary>
-        /// 根据当前协议发送消息
-        /// </summary>
+        // 新增：根据当前协议发送消息
         public async Task<PublishResult> PublishMessageAsync(string topic, string message)
         {
             return CurrentProtocol switch
             {
                 MessageProtocol.MQTT => await PublishMqttMessageAsync(topic, message),
                 MessageProtocol.AMQP => await PublishAmqpMessageAsync(topic, message),
+                // MessageProtocol.Both => await PublishBothAsync(topic, message),
                 _ => new PublishResult(false, "未知的协议类型")
             };
         }
 
-        /// <summary>
-        /// 使用 dllHelper 发送 AMQP 消息
-        /// </summary>
-        public async Task<PublishResult> PublishAmqpMessageAsync(string routingKey, string message)
+        public async Task<PublishResult> PublishAmqpMessageAsync(string topic, string message)
         {
-            return await Task.Run(() =>
+            try
             {
-                try
+                if (_amqpChannel == null || !_amqpConnection!.IsOpen)
                 {
-                    if (_dllHelper == null || !_amqpConnected)
-                    {
-                        var errorMsg = new Message
-                        {
-                            Protocol = "AMQP",
-                            Topic = routingKey,
-                            Content = message,
-                            Timestamp = DateTime.Now,
-                            Status = "失败: 未连接"
-                        };
-                        _sentMessages.Insert(0, errorMsg);
-                        return new PublishResult(false, "AMQP 连接未建立");
-                    }
-
-                    // 使用 dllHelper 发送通用 JSON 数据
-                    string jsonSend;
-                    bool success = _dllHelper.sendCommonJsonData(message, out jsonSend);
-
-                    var sentMessage = new Message
-                    {
-                        Protocol = "AMQP",
-                        Topic = routingKey,
-                        Content = message,
-                        Timestamp = DateTime.Now,
-                        Status = success ? "成功" : $"失败"
-                    };
-
-                    _sentMessages.Insert(0, sentMessage);
-
-                    if (_sentMessages.Count > 1000)
-                    {
-                        _sentMessages.RemoveAt(_sentMessages.Count - 1);
-                    }
-
-                    if (!success)
-                    {
-                        _amqpConnected = false;
-                        _logger?.LogWarning("AMQP 消息发送失败，可能已断开连接");
-                    }
-
-                    return new PublishResult(success, success ? "AMQP消息发布成功" : "AMQP消息发布失败");
+                    return new PublishResult(false, "AMQP connection is not established.");
                 }
-                catch (Exception ex)
+
+                // 编码消息
+                string messageToSend = _enableEncoding ? MessageEncoder.EncodeMessage(message) : message;
+                var body = Encoding.UTF8.GetBytes(messageToSend);
+
+                var properties = new BasicProperties
                 {
-                    _logger?.LogError(ex, "发送 AMQP 消息异常");
+                    Persistent = true,
+                    ContentType = _enableEncoding ? "application/gzip+base64" : "application/json",  // 修改 ContentType
+                    Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+                };
 
-                    var errorMessage = new Message
+                // 如果启用了编码，可以添加自定义头部标识
+                if (_enableEncoding)
+                {
+                    properties.Headers = new Dictionary<string, object>
                     {
-                        Protocol = "AMQP",
-                        Topic = routingKey,
-                        Content = message,
-                        Timestamp = DateTime.Now,
-                        Status = $"失败: {ex.Message}"
+                        { "encoding", "gzip+base64" },
+                        { "original-size", message.Length }
                     };
-
-                    _sentMessages.Insert(0, errorMessage);
-                    _amqpConnected = false;
-
-                    return new PublishResult(false, $"AMQP消息发布失败: {ex.Message}");
                 }
-            });
+
+                await _amqpChannel.BasicPublishAsync(
+                    exchange: EXCHANGE_NAME,
+                    routingKey: _uniqueId,
+                    mandatory: false,
+                    basicProperties: properties,
+                    body: body);
+
+                var sendMessage = new Message
+                {
+                    Protocol = "AMQP",
+                    Topic = topic,
+                    Content = message,  // 保存原始消息用于显示
+                    Timestamp = DateTime.Now,
+                    Status = _enableEncoding ? "成功 (已编码)" : "成功"
+                };
+
+                _sentMessages.Insert(0, sendMessage);
+                return new PublishResult(true, _enableEncoding ? "AMQP消息发布成功 (已编码)" : "AMQP消息发布成功");
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = new Message
+                {
+                    Protocol = "AMQP",
+                    Topic = topic,
+                    Content = message,
+                    Timestamp = DateTime.Now,
+                    Status = $"失败: {ex.Message}"
+                };
+
+                _sentMessages.Insert(0, errorMessage);
+                return new PublishResult(false, $"AMQP消息发布失败: {ex.Message}");
+            }
         }
 
-        /// <summary>
-        /// 发送 MQTT 消息
-        /// </summary>
         public async Task<PublishResult> PublishMqttMessageAsync(string topic, string message)
         {
             try
             {
                 if (_mqttClient == null || !_mqttClient.IsConnected)
                 {
-                    _logger?.LogWarning("MQTT 未连接，尝试发送消息失败");
-
-                    var errorMsg = new Message
-                    {
-                        Protocol = "MQTT",
-                        Topic = topic,
-                        Content = message,
-                        Timestamp = DateTime.Now,
-                        Status = "失败: 未连接"
-                    };
-                    _sentMessages.Insert(0, errorMsg);
                     return new PublishResult(false, "MQTT客户端未连接");
                 }
 
-                var applicationMessage = new MqttApplicationMessageBuilder()
-                    .WithTopic(topic)
-                    .WithPayload(message)
+                // 编码消息
+                string messageToSend = _enableEncoding ? MessageEncoder.EncodeMessage(message) : message;
+
+                // MQTT topic 应该使用 _uniqueId（保持原始格式）
+                // RabbitMQ 会自动将 / 转换为 . 进行路由
+                string mqttTopic = _uniqueId;
+
+                var applicationMessageBuilder = new MqttApplicationMessageBuilder()
+                    .WithTopic(mqttTopic)  // 使用 _uniqueId 而不是传入的 topic
+                    .WithPayload(messageToSend)
                     .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
-                    .WithRetainFlag(false)
-                    .Build();
+                    .WithRetainFlag(false);
+
+                // 如果启用了编码，添加自定义属性
+                if (_enableEncoding)
+                {
+                    applicationMessageBuilder.WithContentType("application/gzip+base64");
+                }
+
+                var applicationMessage = applicationMessageBuilder.Build();
 
                 MqttClientPublishResult result = await _mqttClient.PublishAsync(applicationMessage, CancellationToken.None);
 
-                // ✅ 确保添加到消息列表
                 var sentMessage = new Message
                 {
                     Protocol = "MQTT",
-                    Topic = topic,
+                    Topic = mqttTopic,  // 记录实际使用的 topic
                     Content = message,
                     Timestamp = DateTime.Now,
-                    Status = result.IsSuccess ? "成功" : $"失败: {result.ReasonString}"
+                    Status = result.IsSuccess
+                        ? (_enableEncoding ? "成功 (已编码)" : "成功")
+                        : $"失败: {result.ReasonString}"
                 };
 
                 _sentMessages.Insert(0, sentMessage);
 
-                if (_sentMessages.Count > 1000)
-                {
-                    _sentMessages.RemoveAt(_sentMessages.Count - 1);
-                }
+                AddSystemMessage("系统", $"MQTT消息发布到 topic: {mqttTopic}");
 
-                _logger?.LogDebug("MQTT 消息已发送并添加到列表: Topic={Topic}, Status={Status}", topic, sentMessage.Status);
-
-                return new PublishResult(result.IsSuccess, result.IsSuccess ? "MQTT消息发布成功" : $"MQTT发布失败: {result.ReasonString}");
+                return new PublishResult(true, _enableEncoding ? "MQTT消息发布成功 (已编码)" : "MQTT消息发布成功");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "发送 MQTT 消息异常");
-
                 var errorMessage = new Message
                 {
                     Protocol = "MQTT",
@@ -354,16 +350,16 @@ namespace Flex.Csv2Cfx.Services
         {
             var results = new List<PublishResult>();
 
+            // AMQP，发布到 amq.topic 交换机，routing key 使用 topic
             var amqpResult = await PublishAmqpMessageAsync(topic, message);
             results.Add(amqpResult);
 
+            // MQTT，topic 使用相同值
             var mqttResult = await PublishMqttMessageAsync(topic, message);
             results.Add(mqttResult);
 
             var successCount = results.Count(r => r.Success);
-            var messageText = successCount == 2 ? "两条消息都发布成功" :
-                            successCount == 1 ? "一条消息发布成功" :
-                            "两条消息都发布失败";
+            var messageText = successCount == 2 ? "两条消息都发布成功" : successCount == 1 ? "一条消息发布成功" : "两条消息都发布失败";
 
             return new PublishResult(successCount > 0, messageText);
         }
@@ -391,26 +387,9 @@ namespace Flex.Csv2Cfx.Services
 
         public void Disconnect()
         {
-            try
-            {
-                if (_dllHelper != null)
-                {
-                    _dllHelper.CloseEndpoint();
-                    _dllHelper = null;
-                    _amqpConnected = false;
-                    _logger?.LogInformation("AMQP 连接已断开");
-                }
-
-                if (_mqttClient != null && _mqttClient.IsConnected)
-                {
-                    _ = _mqttClient.DisconnectAsync();
-                    _logger?.LogInformation("MQTT 连接已断开");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "断开连接时发生错误");
-            }
+            _amqpChannel?.CloseAsync();
+            _amqpConnection?.CloseAsync();
+            _ = _mqttClient?.DisconnectAsync();
         }
 
         public void Dispose()
@@ -418,6 +397,8 @@ namespace Flex.Csv2Cfx.Services
             if (!_disposed)
             {
                 Disconnect();
+                _amqpChannel?.Dispose();
+                _amqpConnection?.Dispose();
                 _mqttClient?.Dispose();
                 _disposed = true;
             }
