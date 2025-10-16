@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -240,26 +241,29 @@ namespace Flex.Csv2Cfx.Services
                 // 编码消息
                 string messageToSend = _enableEncoding ? MessageEncoder.EncodeMessage(message) : message;
 
+                // 解析消息以获取 CFX 相关信息
+                var messageInfo = ParseCfxMessage(message);
+
                 // 创建AMQP消息
                 var amqpMessage = new Amqp.Message(messageToSend)
                 {
                     Properties = new Properties
                     {
                         MessageId = Guid.NewGuid().ToString(),
-                        ContentType = _enableEncoding ? "application/gzip+base64" : "application/json",
+                        ContentType = "application/json; charset=\"utf-8\"",
+                        ContentEncoding = "gzip",
                         CreationTime = DateTime.UtcNow,
+                        ReplyTo = _uniqueId // 或者使用messageInfo.Source
                     },
-                    ApplicationProperties = new ApplicationProperties()
+                    ApplicationProperties = new ApplicationProperties
+                    {
+                        ["cfx-handle"] = _uniqueId,
+                        ["cfx-message"] = messageInfo.MessageName,
+                        ["cfx-target"] = messageInfo.Target ?? "",
+                        ["cfx-topic"] = "CFX"
+                    }
                 };
 
-                // 添加自定义属性
-                if (_enableEncoding) 
-                {
-                    amqpMessage.ApplicationProperties["encoding"] = "gzip+base64";
-                    amqpMessage.ApplicationProperties["original-size"] = message.Length;
-                }
-
-                amqpMessage.ApplicationProperties["topic"] = "CFX";
                 // 发送消息
                 await _amqpSender.SendAsync(amqpMessage);
 
@@ -414,6 +418,66 @@ namespace Flex.Csv2Cfx.Services
                 _mqttClient?.Dispose();
                 _disposed = true;
             }
+        }
+
+        /// <summary>
+        /// 解析 CFX 消息以提取关键信息
+        /// </summary>
+        private CfxMessageInfo ParseCfxMessage(string jsonMessage)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(jsonMessage);
+                var root = doc.RootElement;
+
+                return new CfxMessageInfo
+                {
+                    MessageName = root.TryGetProperty("MessageName", out var messageName)
+                        ? messageName.GetString() ?? "Unknown"
+                        : "Unknown",
+                    Version = root.TryGetProperty("Version", out var version)
+                        ? version.GetString() ?? "1.7"
+                        : "1.7",
+                    MessageId = root.TryGetProperty("RequestID", out var requestId)
+                        ? requestId.GetString() ?? Guid.NewGuid().ToString()
+                        : Guid.NewGuid().ToString(),
+                    RequestId = root.TryGetProperty("RequestID", out var reqId)
+                        ? reqId.GetString()
+                        : null,
+                    Source = root.TryGetProperty("Source", out var source)
+                        ? source.GetString()
+                        : null,
+                    Target = root.TryGetProperty("Target", out var target)
+                        ? target.GetString()
+                        : null,
+                    UniqueId = root.TryGetProperty("UniqueID", out var uniqueId)
+                        ? uniqueId.GetString()
+                        : null
+                };
+            }
+            catch
+            {
+                return new CfxMessageInfo
+                {
+                    MessageName = "Unknown",
+                    Version = "1.7",
+                    MessageId = Guid.NewGuid().ToString()
+                };
+            }
+        }
+
+        /// <summary>
+        /// CFX 消息信息类
+        /// </summary>
+        private class CfxMessageInfo
+        {
+            public string MessageName { get; set; } = "Unknown";
+            public string Version { get; set; } = "1.7";
+            public string MessageId { get; set; } = "";
+            public string? RequestId { get; set; }
+            public string? Source { get; set; }
+            public string? Target { get; set; }
+            public string? UniqueId { get; set; }
         }
     }
 
